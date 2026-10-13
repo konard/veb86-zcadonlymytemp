@@ -181,7 +181,7 @@ end;
 
 procedure gotodxf(var rdr:TZMemReader; fcode: Integer; const fname: String);
 var
-  byt: Byte;
+  byt: Integer;
   s: String;
   //error: Integer;
 begin
@@ -398,7 +398,7 @@ end;
 
 function GoToDXForENDTAB(var rdr:TZMemReader; fcode: Integer; const fname: String):boolean;
 var
-  byt:Byte;
+  byt:Integer;
   s:String;
 begin
   result:=false;
@@ -1382,14 +1382,18 @@ end;
 
 { NOD pre-pass для DXF 2000+: модель OBJECTS нужна до ENTITIES (ACAD_TABLE
   применяет стиль при загрузке сущности). Ошибка разбора не прерывает
-  загрузку — предупреждение в лог и пустая модель. }
-procedure DXFNODPrePass(const AFileName:string;const AObjectsSection:string;AModel:TZNODModel);
+  загрузку — предупреждение в лог и пустая модель.
+  Строки DXF до 2007 перекодируются из $DWGCODEPAGE в UTF-8 до разбора (как
+  dxfDeCodeString при чтении остальных секций): иначе имена стилей
+  (ключи словарей ACAD_TABLESTYLE/ACAD_MLEADERSTYLE, например
+  «Аннотативный» в ANSI_1251) попадают в чертёж в однобайтовой кодировке. }
+procedure DXFNODPrePass(const AFileName:string;const AHeader:TDXFHeaderInfo;const AObjectsSection:string;AModel:TZNODModel);
 var
   StartTick:QWord;
   Error:string;
 begin
   StartTick:=GetTickCount64;
-  if not BuildDXFNODModel(AObjectsSection,AModel,Error) then
+  if not BuildDXFNODModel(dxfDeCodeString(AObjectsSection,AHeader),AModel,Error) then
     NODLogWarningFormatStr(
       'uzeffdxf: NOD pre-pass: OBJECTS section of "%s" is not parsed (%s), NOD model is empty',
       [AFileName,Error]);
@@ -1429,25 +1433,19 @@ begin
 end;
 { Этап 7 ТЗ NOD: ветки незарегистрированных и не шаблонных ключей NOD
   копируются в PreservedNODBranches чертежа (с определениями их классов из
-  RawClassesSection), чтобы записать их при сохранении. Строки DXF до 2007
-  перекодируются из $DWGCODEPAGE. Ошибка не прерывает загрузку.
+  RawClassesSection), чтобы записать их при сохранении. Строки модели уже
+  перекодированы в UTF-8 (DXFNODPrePass). Ошибка не прерывает загрузку.
   При вставке (TLOMerge: «Merge», вставка из буфера) ветки вставляемого
   файла не берутся: остаются ветки чертежа, а исходные хэндлы разных
   файлов в хранилище пересекались бы. }
 procedure DXFNODPreserveUnknownBranches(const AHeader:TDXFHeaderInfo;AModel:TZNODModel;var ADrawing:TSimpleDrawing;ALoadMode:TLoadOpt);
-var
-  CodePage:TSystemCodePage;
 begin
   if ALoadMode=TLOMerge then begin
     NODLogTraceFormatStr('uzeffdxf: NOD: merge, unknown branches of the file are not preserved',[]);
     exit;
   end;
-  if AHeader.iVersion<1021 then
-    CodePage:=AHeader.iDWGCodePage
-  else
-    CodePage:=0;
   try
-    RunNODPreserveUnknownBranches(AModel,ADrawing,ADrawing.RawClassesSection,CodePage);
+    RunNODPreserveUnknownBranches(AModel,ADrawing,ADrawing.RawClassesSection,0);
   except
     on E:Exception do
       NODLogWarningFormatStr(
@@ -1488,7 +1486,14 @@ begin
           fileCtx.Header.iDWGCodePage:=1252;
           fileCtx.Header.iVersion:=1009;
         end;
-          { Модель OBJECTS/NOD (этап 2 ТЗ NOD). Для R12 и неизвестных версий
+        { Сырые секции CLASSES и OBJECTS исходного файла: из OBJECTS строится
+          модель NOD (DXFNODPrePass, этап 1-2 ТЗ NOD), из CLASSES берутся
+          определения классов сохраняемых неизвестных веток NOD (этап 7).
+          Без них модель NOD пуста и стили таблиц/мультивыносок не
+          загружаются. }
+        dwgCtx.PDrawing^.RawClassesSection:=ExtractDxfRawSection(AFileName,'CLASSES');
+        dwgCtx.PDrawing^.RawObjectsSection:=ExtractDxfRawSection(AFileName,'OBJECTS');
+        { Модель OBJECTS/NOD (этап 2 ТЗ NOD). Для R12 и неизвестных версий
           остаётся пустой: в R12 секции OBJECTS и NOD нет. Контекст (и модель)
           освобождается и при исключении во время разбора чертежа. }
         fileCtx.NODModel:=TZNODModel.Create;
@@ -1509,7 +1514,7 @@ begin
               { NOD pre-pass: до TABLES/BLOCKS/ENTITIES, чтобы обработчики NOD
                 (стили таблиц и т. п., этапы 3–6) загрузили данные раньше
                 сущностей, которые на них ссылаются. }
-              DXFNODPrePass(AFileName,dwgCtx.PDrawing^.RawObjectsSection,fileCtx.NODModel);
+              DXFNODPrePass(AFileName,fileCtx.Header,dwgCtx.PDrawing^.RawObjectsSection,fileCtx.NODModel);
               { Хэндлы записей TABLES → имена (ссылки MLEADERSTYLE, этап 6) }
               DXFNODLoadSymbolTables(AFileName,fileCtx.Header,fileCtx.NODModel);			  
               if @DXFNODModelBuiltProc<>nil then

@@ -153,6 +153,10 @@ type
     ExtraPairs: TGDBDXFMLeaderStylePairs;
     constructor init(const StyleName: string);
     destructor Done; virtual;
+    { Копирует параметры стиля из ASource (создание стиля «на основе»).
+      Имя стиля не меняется. Хэндл расширенного словаря не копируется:
+      словарь принадлежит объекту ASource. }
+    procedure CopyPropertiesFrom(const ASource: TGDBDXFMLeaderStyle);
   end;
   PTGDBDXFMLeaderStyle = ^TGDBDXFMLeaderStyle;
 
@@ -245,6 +249,60 @@ begin
   BlockContentName := '';
   XDictHandle := '';
   ExtraPairs := nil;
+end;
+
+{ Копирует все параметры, кроме имени и хэндла расширенного словаря }
+procedure TGDBDXFMLeaderStyle.CopyPropertiesFrom(
+  const ASource: TGDBDXFMLeaderStyle);
+begin
+  LeaderLineType := ASource.LeaderLineType;
+  LeaderLineColor := ASource.LeaderLineColor;
+  LeaderLineTypeId := ASource.LeaderLineTypeId;
+  FirstSegAngleConstraint := ASource.FirstSegAngleConstraint;
+  SecondSegAngleConstraint := ASource.SecondSegAngleConstraint;
+  ContentType := ASource.ContentType;
+  FirstSegAngle := ASource.FirstSegAngle;
+  SecondSegAngle := ASource.SecondSegAngle;
+  LeaderLinetypeHandle := ASource.LeaderLinetypeHandle;
+  LeaderLinetypeName := ASource.LeaderLinetypeName;
+  TextAttachmentLeft := ASource.TextAttachmentLeft;
+  TextAttachmentRight := ASource.TextAttachmentRight;
+  TextAngleType := ASource.TextAngleType;
+  TextAlignmentType := ASource.TextAlignmentType;
+  TextAttachmentDirection := ASource.TextAttachmentDirection;
+  LeaderLineWeight := ASource.LeaderLineWeight;
+  EnableDogleg := ASource.EnableDogleg;
+  DoglegLength := ASource.DoglegLength;
+  EnableLanding := ASource.EnableLanding;
+  LandingGap := ASource.LandingGap;
+  Description := ASource.Description;
+  ArrowHeadBlockHandle := ASource.ArrowHeadBlockHandle;
+  ArrowHeadBlockName := ASource.ArrowHeadBlockName;
+  TextHeight := ASource.TextHeight;
+  DefaultTextContent := ASource.DefaultTextContent;
+  TextStyleHandle := ASource.TextStyleHandle;
+  TextStyleName := ASource.TextStyleName;
+  TextColor := ASource.TextColor;
+  ArrowHeadSize := ASource.ArrowHeadSize;
+  TextAlignAlwaysLeft := ASource.TextAlignAlwaysLeft;
+  AlignSpace := ASource.AlignSpace;
+  BlockContentScale := ASource.BlockContentScale;
+  BlockContentHandle := ASource.BlockContentHandle;
+  BlockContentName := ASource.BlockContentName;
+  BlockContentColor := ASource.BlockContentColor;
+  BlockContentScaleX := ASource.BlockContentScaleX;
+  BlockContentScaleY := ASource.BlockContentScaleY;
+  OverallScale := ASource.OverallScale;
+  Annotative := ASource.Annotative;
+  BreakGapSize := ASource.BreakGapSize;
+  TextDirectionNegative := ASource.TextDirectionNegative;
+  IsBlockContent := ASource.IsBlockContent;
+  IsMTextContent := ASource.IsMTextContent;
+  BlockContentScaleZ := ASource.BlockContentScaleZ;
+  BlockContentRotation := ASource.BlockContentRotation;
+  MLeaderVersion := ASource.MLeaderVersion;
+  { Отдельная копия массива: динамические массивы общие по ссылке }
+  ExtraPairs := Copy(ASource.ExtraPairs);
 end;
 
 { === Методы GDBDXFMLeaderStyleArray === }

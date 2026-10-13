@@ -1,0 +1,18 @@
+//запускаем скрипт командой:
+//LPCSRun(layers)
+
+procedure DoLayersTest;
+var
+  i:int32;
+  lr:PzeLayer;
+begin
+  for i:=0 to zeDwgGetLayersCount-1 do begin
+    lr:=zeDwgGetLayer(i);
+    if lr<>nil then
+      zcUIMessageBox(zeLayerName(lr));
+  end;
+end;
+
+begin
+  DoLayersTest;
+end.

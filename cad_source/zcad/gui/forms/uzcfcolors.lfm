@@ -1,0 +1,178 @@
+object ColorSelectForm: TColorSelectForm
+  Left = 649
+  Height = 470
+  Top = 205
+  Width = 632
+  ActiveControl = ButtonPanel1.HelpButton
+  BorderStyle = bsDialog
+  Caption = 'Color selection'
+  ClientHeight = 470
+  ClientWidth = 632
+  Constraints.MinHeight = 470
+  Constraints.MinWidth = 632
+  OnCreate = _onCreate
+  OnResize = _onResize
+  OnShow = _onshow
+  Position = poMainFormCenter
+  LCLVersion = '1.7'
+  object ButtonPanel1: TButtonPanel
+    Left = 1
+    Height = 37
+    Top = 432
+    Width = 630
+    BorderSpacing.Around = 1
+    OKButton.Name = 'OKButton'
+    OKButton.DefaultCaption = True
+    HelpButton.Name = 'HelpButton'
+    HelpButton.DefaultCaption = True
+    CloseButton.Name = 'CloseButton'
+    CloseButton.DefaultCaption = True
+    CancelButton.Name = 'CancelButton'
+    CancelButton.DefaultCaption = True
+    TabOrder = 0
+    ShowButtons = [pbOK, pbCancel, pbHelp]
+  end
+  object PageControl1: TPageControl
+    Left = 0
+    Height = 431
+    Top = 0
+    Width = 632
+    ActivePage = TabSheet1
+    Align = alClient
+    TabIndex = 0
+    TabOrder = 1
+    object TabSheet1: TTabSheet
+      Caption = 'Color index'
+      ClientHeight = 399
+      ClientWidth = 624
+      object oddpalette: TPaintBox
+        AnchorSideLeft.Control = TabSheet1
+        AnchorSideTop.Control = Owner
+        AnchorSideRight.Control = TabSheet1
+        AnchorSideRight.Side = asrBottom
+        Left = 0
+        Height = 152
+        Top = 0
+        Width = 624
+        Anchors = [akTop, akLeft, akRight]
+        OnMouseDown = OddMDown
+        OnPaint = OddPalettePaint
+      end
+      object evenpalette: TPaintBox
+        AnchorSideLeft.Control = TabSheet1
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = TabSheet1
+        AnchorSideRight.Side = asrBottom
+        Left = 0
+        Height = 78
+        Top = 167
+        Width = 624
+        Anchors = [akLeft, akRight]
+        BorderSpacing.Top = 10
+        BorderSpacing.Bottom = 10
+        OnMouseDown = EvenMDown
+        OnPaint = EvenPalettePaint
+      end
+      object mainpalette: TPaintBox
+        AnchorSideLeft.Control = TabSheet1
+        Left = 0
+        Height = 58
+        Top = 251
+        Width = 452
+        Anchors = [akLeft]
+        OnMouseDown = mainMdown
+        OnPaint = MainPalettePaint
+      end
+      object graypalette: TPaintBox
+        AnchorSideLeft.Control = TabSheet1
+        Left = 0
+        Height = 48
+        Top = 324
+        Width = 452
+        Anchors = [akLeft]
+        OnMouseDown = grayMDown
+        OnPaint = GrayGeometryPaint
+      end
+      object Label3: TLabel
+        AnchorSideLeft.Control = Owner
+        AnchorSideTop.Control = SpinEdit1
+        AnchorSideRight.Control = SpinEdit1
+        AnchorSideBottom.Control = SpinEdit1
+        AnchorSideBottom.Side = asrCenter
+        Left = 0
+        Height = 25
+        Top = 372
+        Width = 116
+        Alignment = taRightJustify
+        Anchors = [akTop, akLeft, akBottom]
+        Caption = '??Color description'
+        Layout = tlCenter
+        ParentColor = False
+      end
+      object Label2: TLabel
+        AnchorSideLeft.Control = Label3
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = SpinEdit1
+        AnchorSideRight.Control = SpinEdit1
+        AnchorSideBottom.Control = SpinEdit1
+        AnchorSideBottom.Side = asrCenter
+        Left = 482
+        Height = 25
+        Top = 372
+        Width = 88
+        Alignment = taRightJustify
+        Anchors = [akTop, akRight, akBottom]
+        Caption = 'Color number:'
+        Layout = tlCenter
+        ParentColor = False
+      end
+      object SpinEdit1: TSpinEdit
+        AnchorSideRight.Control = TabSheet1
+        AnchorSideRight.Side = asrBottom
+        AnchorSideBottom.Control = TabSheet1
+        AnchorSideBottom.Side = asrBottom
+        Left = 570
+        Height = 27
+        Top = 372
+        Width = 54
+        Anchors = [akRight, akBottom]
+        MaxValue = 256
+        OnChange = testsetcolor
+        TabOrder = 0
+        Value = 111
+      end
+      object ByBlock: TBitBtn
+        AnchorSideLeft.Control = mainpalette
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = mainpalette
+        AnchorSideRight.Control = TabSheet1
+        AnchorSideRight.Side = asrBottom
+        Left = 502
+        Height = 32
+        Top = 251
+        Width = 122
+        Anchors = [akTop, akLeft, akRight]
+        BorderSpacing.Left = 50
+        Caption = '??ByBlock'
+        OnClick = ByBlockCLC
+        TabOrder = 1
+      end
+      object ByLayer: TBitBtn
+        AnchorSideLeft.Control = ByBlock
+        AnchorSideTop.Control = ByBlock
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = TabSheet1
+        AnchorSideRight.Side = asrBottom
+        AnchorSideBottom.Side = asrCenter
+        Left = 502
+        Height = 32
+        Top = 283
+        Width = 122
+        Anchors = [akTop, akLeft, akRight]
+        Caption = '??ByLayer'
+        OnClick = ByLayerCLC
+        TabOrder = 2
+      end
+    end
+  end
+end

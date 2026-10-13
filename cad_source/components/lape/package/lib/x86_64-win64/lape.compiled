@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="4.99"/>
+  <Compiler Value="C:\fpclaz\pp\bin\x86_64-win64\fpc.exe" Date="1550621805"/>
+  <Params Value="-MObjFPC -Scghi -CX -O3 -OoUNCERTAIN -l -vewnhibq -vm5024,4055 -FiC:\zcad\zcad\cad_source\components\lape -FuC:\zcad\zcad\cad_source\components\lape\package\ -FuC:\zcad\zcad\cad_source\components\lape -FuC:\fpclaz\lazarus\packager\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazutils\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\freetype\lib\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64 -FUC:\zcad\zcad\cad_source\components\lape\package\lib\x86_64-win64\ -Ur lape.pas"/>
+</CONFIG>

@@ -1,0 +1,5 @@
+cfgAddSupportPath($(CurrentMacrosPath))
+cfgAddSupportPath($(CurrentMacrosPath)$(DirectorySeparator)callingpanels)
+cfgAddSupportPath($(CurrentMacrosPath)$(DirectorySeparator)controlbuttons)
+cfgAddSupportPath($(CurrentMacrosPath)$(DirectorySeparator)networkequipment)
+LoadPalettes($(CurrentMacrosPath)$(DirectorySeparator)lowcurrentnetworks.xml)

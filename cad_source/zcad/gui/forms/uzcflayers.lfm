@@ -1,0 +1,289 @@
+object LayersForm: TLayersForm
+  Left = 643
+  Height = 1032
+  Top = 222
+  Width = 1839
+  ActiveControl = ButtonApplyClose
+  Caption = 'Layers'
+  ClientHeight = 1032
+  ClientWidth = 1839
+  Constraints.MinHeight = 875
+  Constraints.MinWidth = 1400
+  DesignTimePPI = 168
+  Position = poMainFormCenter
+  LCLVersion = '3.99.0.0'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = RefreshListItems
+  object Bevel1: TBevel
+    AnchorSideLeft.Control = Panel1
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Panel1
+    AnchorSideBottom.Side = asrBottom
+    Left = 592
+    Height = 41
+    Top = 2
+    Width = 1238
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Left = 9
+    BorderSpacing.Top = 2
+    BorderSpacing.Right = 9
+    BorderSpacing.Bottom = 2
+  end
+  object LayerDescLabel: TLabel
+    AnchorSideLeft.Control = Bevel1
+    AnchorSideTop.Control = Bevel1
+    AnchorSideRight.Control = Bevel1
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Bevel1
+    AnchorSideBottom.Side = asrBottom
+    Left = 606
+    Height = 37
+    Top = 4
+    Width = 1210
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    AutoSize = False
+    BorderSpacing.Left = 12
+    BorderSpacing.Right = 12
+    BorderSpacing.Around = 2
+    Layout = tlCenter
+    ParentColor = False
+  end
+  object ButtonApplyClose: TBitBtn
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 1567
+    Height = 52
+    Top = 978
+    Width = 270
+    Anchors = [akRight, akBottom]
+    BorderSpacing.Right = 2
+    BorderSpacing.Bottom = 2
+    Caption = 'Apply and close'
+    TabOrder = 0
+    OnClick = AplyClose
+  end
+  object Button_Apply: TBitBtn
+    AnchorSideRight.Control = ButtonApplyClose
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 1303
+    Height = 52
+    Top = 978
+    Width = 262
+    Anchors = [akRight, akBottom]
+    BorderSpacing.Right = 2
+    BorderSpacing.Bottom = 2
+    Caption = 'Apply'
+    ParentShowHint = False
+    TabOrder = 1
+    OnClick = Aply
+  end
+  object ListView1: TZListView
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = ButtonApplyClose
+    Left = 2
+    Height = 925
+    Top = 49
+    Width = 1835
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Left = 2
+    BorderSpacing.Top = 4
+    BorderSpacing.Right = 2
+    BorderSpacing.Bottom = 4
+    BorderStyle = bsNone
+    Columns = <    
+      item
+        Alignment = taCenter
+        Caption = 'Status'
+        Width = 93
+      end    
+      item
+        Caption = 'Name'
+        Width = 701
+      end    
+      item
+        Alignment = taCenter
+        Caption = 'On'
+        Width = 117
+      end    
+      item
+        Alignment = taCenter
+        Caption = 'Freze'
+        Width = 117
+      end    
+      item
+        Alignment = taCenter
+        Caption = 'Lock'
+        Width = 117
+      end    
+      item
+        Caption = 'Color'
+        Width = 117
+      end    
+      item
+        Caption = 'Line type'
+        Width = 175
+      end    
+      item
+        Caption = 'Line weight'
+        Width = 175
+      end    
+      item
+        Alignment = taCenter
+        Caption = 'Plot'
+        Width = 88
+      end    
+      item
+        AutoSize = True
+        Caption = 'Description'
+        Width = 135
+      end>
+    MultiSelect = True
+    ReadOnly = True
+    RowSelect = True
+    ScrollBars = ssAutoBoth
+    SortType = stText
+    TabOrder = 2
+    ViewStyle = vsReport
+    OnSelectItem = ListView1SelectItem
+    onMakeCurrent = MakeItemCurrent
+  end
+  object Panel1: TPanel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    Left = 0
+    Height = 45
+    Top = 0
+    Width = 583
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 45
+    ClientWidth = 583
+    Constraints.MinWidth = 583
+    TabOrder = 3
+    object CoolBar1: TCoolBar
+      Left = 0
+      Height = 45
+      Top = 0
+      Width = 583
+      AutoSize = True
+      Bands = <      
+        item
+          Control = ToolBar1
+          Width = 210
+        end>
+      EdgeBorders = []
+      Themed = False
+      object ToolBar1: TToolBar
+        AnchorSideLeft.Control = CoolBar1
+        AnchorSideTop.Control = CoolBar1
+        Left = 22
+        Height = 39
+        Top = 3
+        Width = 207
+        Align = alNone
+        AutoSize = True
+        BorderSpacing.Left = 22
+        BorderSpacing.Top = 3
+        Caption = 'ToolBar1'
+        EdgeBorders = []
+        ParentShowHint = False
+        ShowHint = True
+        TabOrder = 0
+        Transparent = True
+        Wrapable = False
+        object ToolButton1: TToolButton
+          Left = 1
+          Top = 0
+          Action = AddLayer
+          ParentShowHint = False
+          ShowHint = True
+        end
+        object ToolButton2: TToolButton
+          Left = 41
+          Top = 0
+          Action = DelLayer
+          ParentShowHint = False
+          ShowHint = True
+        end
+        object ToolButton3: TToolButton
+          Left = 81
+          Top = 0
+          Action = MkCurrentLayer
+          ParentShowHint = False
+          ShowHint = True
+        end
+        object ToolButton4: TToolButton
+          Left = 121
+          Height = 5
+          Top = 0
+          Caption = 'ToolButton4'
+          Style = tbsDivider
+        end
+        object ToolButton5: TToolButton
+          Left = 127
+          Top = 0
+          Action = PurgeLayers
+          ParentShowHint = False
+          ShowHint = True
+        end
+        object ToolButton6: TToolButton
+          Left = 167
+          Top = 0
+          Action = RefreshLayers
+          ParentShowHint = False
+          ShowHint = True
+        end
+      end
+    end
+  end
+  object ActionList1: TActionList
+    Left = 1320
+    Top = 455
+    object AddLayer: TAction
+      Caption = 'AddLayer'
+      DisableIfNoHandler = False
+      Hint = 'Add layer'
+      ShortCut = 45
+      OnExecute = LayerAdd
+    end
+    object DelLayer: TAction
+      Caption = 'DelLayer'
+      DisableIfNoHandler = False
+      Hint = 'Delete layer'
+      ShortCut = 46
+      OnExecute = LayerDelete
+    end
+    object MkCurrentLayer: TAction
+      Caption = 'MkCurrentLayer'
+      DisableIfNoHandler = False
+      Hint = 'Make selected layer current'
+      ShortCut = 32
+      OnExecute = MkCurrent
+    end
+    object PurgeLayers: TAction
+      Caption = 'PurgeLayers'
+      DisableIfNoHandler = False
+      Hint = 'Purge layers'
+      ShortCut = 8238
+      OnExecute = _PurgeLayers
+    end
+    object RefreshLayers: TAction
+      Caption = 'RefreshLayers'
+      DisableIfNoHandler = False
+      Hint = 'Refresh layers'
+      ShortCut = 115
+      OnExecute = RefreshListItems
+    end
+  end
+end

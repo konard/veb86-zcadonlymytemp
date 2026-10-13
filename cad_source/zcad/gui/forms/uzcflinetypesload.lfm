@@ -1,0 +1,71 @@
+object LineTypesLoadForm: TLineTypesLoadForm
+  Left = 586
+  Height = 536
+  Top = 251
+  Width = 426
+  ActiveControl = ButtonPanel1.OKButton
+  Caption = 'Form1'
+  ClientHeight = 536
+  ClientWidth = 426
+  OnCreate = _oncreate
+  LCLVersion = '1.7'
+  Visible = False
+  object ButtonPanel1: TButtonPanel
+    Left = 6
+    Height = 37
+    Top = 493
+    Width = 414
+    OKButton.Name = 'OKButton'
+    OKButton.DefaultCaption = True
+    HelpButton.Name = 'HelpButton'
+    HelpButton.DefaultCaption = True
+    CloseButton.Name = 'CloseButton'
+    CloseButton.DefaultCaption = True
+    CancelButton.Name = 'CancelButton'
+    CancelButton.DefaultCaption = True
+    TabOrder = 0
+    ShowButtons = [pbOK, pbCancel]
+  end
+  object ListView1: TListView
+    AnchorSideTop.Control = FileNameEdit1
+    AnchorSideTop.Side = asrBottom
+    Left = 0
+    Height = 460
+    Top = 27
+    Width = 426
+    Align = alBottom
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    Columns = <    
+      item
+        AutoSize = True
+        Caption = 'Name'
+        Width = 422
+      end    
+      item
+        AutoSize = True
+        Caption = 'Description'
+        Width = 81
+      end>
+    ReadOnly = True
+    RowSelect = True
+    TabOrder = 1
+    ViewStyle = vsReport
+    OnSelectItem = _onSelect
+  end
+  object FileNameEdit1: TFileNameEdit
+    Left = 0
+    Height = 27
+    Top = 0
+    Width = 426
+    Filter = 'Line types file|*.lin|All files|*.*'
+    FilterIndex = 0
+    HideDirectories = True
+    ButtonWidth = 23
+    DirectInput = False
+    NumGlyphs = 1
+    Align = alTop
+    MaxLength = 0
+    TabOrder = 2
+    OnChange = _changefile
+  end
+end

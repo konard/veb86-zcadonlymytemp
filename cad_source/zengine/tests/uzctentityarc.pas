@@ -1,0 +1,80 @@
+unit uzctEntityArc;
+{$Codepage UTF8}
+
+interface
+
+
+uses
+  SysUtils,
+  fpcunit,testregistry,math,
+  uzeentarc,
+  uzedrawingsimple,
+  uzgldrawcontext,
+  uzegeometry,
+  uzegeometrytypes,
+  uzestyleslayers,
+  //todo: убрать зависимость от lcl
+  Interfaces//нужен, потому что uzedrawingsimple->uzglviewareaabstract->lcl
+  ;
+
+type
+  TArcTest=class(TTestCase)
+  published
+    procedure Transform;
+  end;
+
+
+implementation
+
+procedure TArcTest.Transform;
+var
+  drawing:TSimpleDrawing;
+  arc:PGDBObjArc;
+  dc:TDrawContext;
+  center:TzePoint3d;
+  verror:string;
+begin
+  //Создание нового чертежа
+  drawing.init(nil);
+  //Создание дуги
+  arc:=GDBObjArc.CreateInstance;
+  //Настройка параметров дуги
+  center:=TzePoint3d.Make(10,10,0);  // Центр дуги
+  arc^.Local.P_insert:=center;
+  arc^.R:=10.0;                       // Радиус 50 единиц
+  arc^.StartAngle:=pi;               // Начальный угол 0 радиан
+  arc^.EndAngle:=3*Pi/2;
+  // Конечный угол π радиан (полукруг)
+  //Добавление дуги в чертёж
+  drawing.GetCurrentRoot^.AddMi(arc);
+  // Создание контекста рисования
+  dc:=drawing.CreateDrawingRC;
+  // Построение геометрии
+  arc^.BuildGeometry(drawing);
+  // Форматирование сущности
+  arc^.formatEntity(drawing,dc);
+  arc^.transform(CreateReflectionMatrix(PlaneFrom3Pont(cP3d__0__0__0,cP3d__0__1__0,cP3d__0__0__1)));
+  arc^.formatEntity(drawing,dc);
+
+  verror:='';
+  if not arc^.P_insert_in_WCS.IsEqual(TzePoint3d.Make(-10,10,0)) then
+    verror:=verror+format('arc^.P_insert_in_WCS (%g,%g,%g)<>(-10,10,0); ',
+      [arc^.P_insert_in_WCS.x,arc^.P_insert_in_WCS.y,arc^.P_insert_in_WCS.z]);
+  if not SameValue(arc^.StartAngle,3*Pi/2) then
+    verror:=verror+format('arc^.StartAngle %g<>3*Pi/2; ',[arc^.StartAngle]);
+  if not SameValue(arc^.EndAngle,0) then
+    verror:=verror+format('arc^.EndAngle %g<>0; ',[arc^.EndAngle]);
+  if not SameValue(arc^.R,10) then
+    verror:=verror+format('arc^.R %g<>10; ',[arc^.R]);
+  try
+  if verror<>''then
+    raise Exception.Create('arc^.transform failed! '+verror);
+
+  finally
+    drawing.done;
+  end;
+end;
+
+begin
+  RegisterTests([TArcTest]);
+end.

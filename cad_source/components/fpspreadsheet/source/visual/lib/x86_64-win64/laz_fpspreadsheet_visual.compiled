@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="4.99"/>
+  <Compiler Value="C:\fpclaz\pp\bin\x86_64-win64\fpc.exe" Date="1550621805"/>
+  <Params Value="-MObjFPC -Scghi -O1 -g -gl -l -vewnhibq -FiC:\zcad\zcad\cad_source\components\fpspreadsheet\source -FuC:\zcad\zcad\cad_source\components\fpspreadsheet\ -FuC:\zcad\zcad\cad_source\components\fpspreadsheet\source\visual -FuC:\fpclaz\lazarus\packager\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazutils\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\buildintf\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\freetype\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazdebuggers\lazdebuggerintf\lib\x86_64-win64 -FuC:\zcad\zcad\cad_source\components\fpspreadsheet\source\common\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\debuggerintf\lib\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazedit\lib\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64\win32 -FuC:\fpclaz\lazarus\components\lazcontrols\lib\x86_64-win64\win32 -FuC:\fpclaz\lazarus\components\ideintf\units\x86_64-win64\win32 -FuC:\fpclaz\lazarus\components\tachart\lib\x86_64-win64\win32 -FUC:\zcad\zcad\cad_source\components\fpspreadsheet\source\visual\lib\x86_64-win64\ -dLCL -dLCLwin32 laz_fpspreadsheet_visual.pas"/>
+</CONFIG>

@@ -1,0 +1,229 @@
+object Form1: TForm1
+  Left = 467
+  Height = 527
+  Top = 160
+  Width = 1351
+  Caption = 'Form1'
+  ClientHeight = 527
+  ClientWidth = 1351
+  LCLVersion = '4.99.0.0'
+  OnCreate = FormCreate
+  object Splitter1: TSplitter
+    Left = 523
+    Height = 489
+    Top = 38
+    Width = 5
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 38
+    Top = 0
+    Width = 1351
+    Align = alTop
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 38
+    ClientWidth = 1351
+    TabOrder = 1
+    object lblFileNames: TLabel
+      AnchorSideLeft.Control = Panel1
+      AnchorSideTop.Control = Panel1
+      AnchorSideTop.Side = asrCenter
+      Left = 6
+      Height = 15
+      Top = 12
+      Width = 51
+      BorderSpacing.Around = 6
+      Caption = 'File name'
+    end
+    object cbFileNames: TComboBox
+      AnchorSideLeft.Control = lblFileNames
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = Panel1
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = btnBrowse
+      Left = 63
+      Height = 23
+      Top = 8
+      Width = 1161
+      Anchors = [akTop, akLeft, akRight]
+      BorderSpacing.Around = 6
+      DropDownCount = 50
+      ItemHeight = 15
+      TabOrder = 0
+      OnSelect = cbFileNamesSelect
+    end
+    object btnBrowse: TButton
+      AnchorSideTop.Control = Panel1
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = btnOpen
+      Left = 1230
+      Height = 25
+      Top = 7
+      Width = 35
+      Anchors = [akTop, akRight]
+      AutoSize = True
+      BorderSpacing.Around = 6
+      Caption = '...'
+      TabOrder = 1
+      OnClick = btnBrowseClick
+    end
+    object btnOpen: TButton
+      AnchorSideTop.Control = Panel1
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = Panel1
+      AnchorSideRight.Side = asrBottom
+      Left = 1271
+      Height = 25
+      Top = 7
+      Width = 74
+      Anchors = [akTop, akRight]
+      AutoSize = True
+      BorderSpacing.Around = 6
+      Caption = 'Open file'
+      Default = True
+      TabOrder = 2
+      OnClick = btnOpenClick
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Height = 489
+    Top = 38
+    Width = 523
+    Align = alLeft
+    Caption = 'Panel2'
+    ClientHeight = 489
+    ClientWidth = 523
+    TabOrder = 2
+    object Memo: TMemo
+      Left = 1
+      Height = 112
+      Top = 376
+      Width = 521
+      Align = alBottom
+      TabOrder = 0
+    end
+    object sWorkbookTabControl1: TsWorkbookTabControl
+      Left = 1
+      Height = 375
+      Top = 1
+      Width = 521
+      OnChange = sWorkbookTabControl1Change
+      TabHeight = 25
+      TabIndex = 0
+      Tabs.Strings = (
+        'Sheet1'
+      )
+      Align = alClient
+      TabOrder = 1
+      WorkbookSource = sWorkbookSource
+      object sWorksheetGrid: TsWorksheetGrid
+        Left = 2
+        Height = 348
+        Top = 25
+        Width = 517
+        FrozenCols = 0
+        FrozenRows = 0
+        PageBreakPen.Color = clBlue
+        PageBreakPen.Style = psDash
+        ReadFormulas = False
+        TextOverflow = True
+        WorkbookSource = sWorkbookSource
+        Align = alClient
+        AutoAdvance = aaDown
+        Color = clWhite
+        DefaultColWidth = 64
+        DefaultRowHeight = 22
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
+        TabOrder = 1
+      end
+    end
+  end
+  object Panel3: TPanel
+    Left = 528
+    Height = 489
+    Top = 38
+    Width = 823
+    Align = alClient
+    BevelOuter = bvNone
+    Caption = 'No chart on this worksheet'
+    ClientHeight = 489
+    ClientWidth = 823
+    TabOrder = 3
+    object Chart: TChart
+      Left = 0
+      Height = 464
+      Top = 25
+      Width = 823
+      AxisList = <      
+        item
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Title.LabelFont.Orientation = 900
+          Title.LabelBrush.Style = bsClear
+        end      
+        item
+          Alignment = calBottom
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Title.LabelBrush.Style = bsClear
+        end>
+      Legend.SymbolWidth = 40
+      Title.Text.Strings = (
+        'TAChart'
+      )
+      Align = alClient
+    end
+    object Panel4: TPanel
+      Left = 0
+      Height = 25
+      Top = 0
+      Width = 823
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 25
+      ClientWidth = 823
+      TabOrder = 1
+      Visible = False
+      object Label1: TLabel
+        AnchorSideTop.Control = Panel4
+        AnchorSideTop.Side = asrCenter
+        Left = 0
+        Height = 15
+        Top = 5
+        Width = 39
+        Caption = 'Chart #'
+      end
+      object seChartIndex: TSpinEdit
+        AnchorSideTop.Control = Panel4
+        AnchorSideTop.Side = asrCenter
+        Left = 48
+        Height = 23
+        Top = 1
+        Width = 74
+        Alignment = taRightJustify
+        TabOrder = 0
+        OnChange = seChartIndexChange
+      end
+    end
+  end
+  object sWorkbookSource: TsWorkbookSource
+    FileFormat = sfUser
+    Options = [boAutoCalc, boReadFormulas]
+    OnError = sWorkbookSourceError
+    Left = 176
+    Top = 152
+  end
+  object OpenDialog: TOpenDialog
+    DefaultExt = '.ods'
+    Filter = 'Spreadsheet files|*.xlsx;*.ods|Excel 2007+ files|*.xlsx|OpenDocument Spreadsheet Files|*.ods'
+    Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
+    Left = 976
+    Top = 56
+  end
+  object ListChartSource: TListChartSource
+    Left = 328
+    Top = 152
+  end
+end

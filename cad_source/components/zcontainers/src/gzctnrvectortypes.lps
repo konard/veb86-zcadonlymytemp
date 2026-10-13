@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <Units>
+      <Unit>
+        <Filename Value="gzctnrvectortypes.pas"/>
+        <UnitName Value="gzctnrVectorTypes"/>
+        <IsVisibleTab Value="True"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="2">
+      <Position>
+        <Filename Value="gzctnrvectortypes.pas"/>
+        <Caret Line="43" Column="10" TopLine="71"/>
+      </Position>
+      <Position>
+        <Filename Value="gzctnrvectortypes.pas"/>
+        <Caret Line="59" TopLine="47"/>
+      </Position>
+      <Position>
+        <Filename Value="gzctnrvectortypes.pas"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

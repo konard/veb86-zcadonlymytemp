@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <STRINGTREE>
+    <Connections Desc="Connections">
+      <Electrotechnics Desc="Electrotechnics">
+        <Power Desc="Power">
+        </Power>
+        <Control Desc="Control">
+        </Control>
+      </Electrotechnics>
+    </Connections>
+    <Electrotechnics Desc="Electrotechnics">
+      <Power_consumer Desc="Power consumers">
+        <Heating Desc="Heating">
+          <Electric_heater Desc="Electric heater"/>
+        </Heating>
+        <Lighting Desc="Lighting">
+          <Lamp Desc="Lamp"/>
+        </Lighting>
+        <Drives Desc="Drives">
+          <Motor Desc="Motor"/>
+        </Drives>
+      </Power_consumer>
+      <Technological_device Desc="Technological device">
+        <Valve Desc="Valve">
+          <Solenoid Desc="Solenoid"/>
+          <Valve Desc="Valve"/>
+        </Valve>
+      </Technological_device>
+      <Measuring_equipment Desc="Measuring equipment">
+        <Pressure Desc="Pressure">
+          <Manometer Desc="Manometer"/>
+          <Switch Desc="Pressure switch"/>
+          <Sensor Desc="Pressure sensor"/>
+        </Pressure>
+        <Temperature Desc="Temperature">
+          <Thermometer Desc="Thermometer"/>
+          <Switch Desc="Temperature switch"/>
+          <Sensor Desc="Temperature sensor"/>
+        </Temperature>
+        <Level Desc="Level">
+          <Gauge Desc="Level gauge"/>
+          <Switch Desc="Level switch"/>
+          <Sensor Desc="Level sensor"/>
+        </Level>
+        <Flow Desc="Flow">
+          <Gauge Desc="Flow gauge"/>
+          <Switch Desc="Flow switch"/>
+          <Sensor Desc="Flow sensor"/>
+        </Flow>
+      </Measuring_equipment>
+      <Alarm Desc="Alarm">
+        <Fire Desc="Fire">
+          <Detectors Desc="Detectors">
+            <Smoke Desc="Smoke">
+              <Spot Desc="Spot"/>
+              <Linear Desc="Linear"/>
+            </Smoke>
+            <Thermal Desc="Thermal">
+              <Spot Desc="Spot"/>
+              <Linear Desc="Linear"/>
+            </Thermal>
+          </Detectors>
+        </Fire>
+        <Security  Desc="Security">
+        </Security>
+      </Alarm>
+    </Electrotechnics>
+    <Velectr Desc="VElectrotechnics">
+       <Workmode Desc="Different operating modes">
+         <BackupELDev Desc="Backup electronic equipment"/>
+         <Control Desc="Electrical equipment for communication, accounting, and heating points"/>
+         <Summer Desc="Electrical installations (air conditioners) that were turned off in winter"/>
+         <Winter Desc="Electric appliances turned off in summer (electric heaters, heatveils)"/>
+       </Workmode>
+       <Fire Desc="Fire">
+         <NotWork Desc="Equipment that is turned off in the event of a fire"/>
+         <Work Desc="Equipment operating in case of fire"/>         
+         <Vent Desc="Fire-fighting ventilation"/>         
+         <Pump Desc="Fire-fighting pumping units"/>        
+         <Valves Desc="Fire safety valves"/>
+         <DevControl Desc="Fire alarm, fire-fighting equipment"/>
+       </Fire>
+       <PlumbingEquip Desc="Plumbing equipment">
+         <Vent Desc="General exchange ventilation">
+           <Supply Desc="Supply ventilation"/>
+           <Exhaust Desc="Exhaust ventilation"/>
+           <Household Desc="Household ventilation"/>
+           <Heating Desc="Electric heating of ventilation"/>
+           <Valves Desc="Electric valves of ventilation"/>
+           <Pumps Desc="Pumps ventilation"/>
+         </Vent>
+         <Conditioners Desc="Air conditioners">
+           <Outdoor Desc="Outdoor units"/>
+           <Indoor Desc="Indoor units"/>
+         </Conditioners>
+         <Airheaters Desc="Electric heaters"/>         
+         <Waterheaters Desc="Electric water heaters"/>         
+         <Aircurtains Desc="Air curtains"/>        
+         <Pumps Desc="Pumps"/>
+         <Refrigerators Desc="Refrigerators"/>
+       </PlumbingEquip>
+       <Admbuild Desc="Administrative buildings">
+         <Kitchenunits Desc="Electrical equipment for public catering establishments and kitchen units"/>         
+         <Colddishwash Desc="Dishwashers with cold water supply"/>         
+         <Hotdishwash Desc="Dishwashers with hot water supply"/>        
+         <Elevator12below Desc="Elevator installations below 12 floors"/>
+         <Elevator12above Desc="Elevator installations above 12 floors"/>
+         <Scenemechanisms Desc="Power receivers for stage machinery"/>
+         <Computers Desc="Computers"/>   
+         <Communicationdev Desc="Communication devices"/>
+         <Metalwoodmachines Desc="Metalworking and woodworking machines in workshops"/> 
+         <Photographylab Desc="Photography lab duplicating equipment"/>
+         <Educationlab Desc="Educational laboratory equipment"/> 
+         <Educationworkshops Desc="Electrical equipment for educational and production workshops of colleges and schools"/>
+         <Technologservtrademedical Desc="Technological equipment for consumer services, trade, and medical offices"/>     
+         <Technicaldrycleanlaundries Desc="Technical equipment for dry cleaning and laundries"/> 
+         <Handwarmers Desc="Hand and towel warmers"/>
+         <Householdstove Desc="Household electric stoves"/>          
+       </Admbuild>      
+       <Livinghouse Desc="Residential Buildings">
+         <Apartmentselectric Desc="Apartments with electric stoves (8.5 kW)"/>         
+         <Apartmentsnaturalgas Desc="Apartments with natural gas stoves (4.5 kW)"/>                  
+       </Livinghouse>  
+       <Lighting Desc="Lighting">
+         <Work Desc="Work Lighting"/>         
+         <Emergency Desc="Emergency Lighting"/>                                   
+         <Exterior Desc="Exterior Lighting"/>                  
+         <Facade Desc="Facade Lighting"/>                  
+         <Outlet Desc="Outlet Network"/>          
+       </Lighting>      
+    </Velectr>  
+    <Not_classified Desc="Not classified"/>
+  </STRINGTREE>
+</CONFIG>

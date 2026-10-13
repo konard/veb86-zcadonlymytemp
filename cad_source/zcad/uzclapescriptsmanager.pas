@@ -1,0 +1,380 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+unit uzcLapeScriptsManager;
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  SysUtils,
+  uzbpaths,
+  lptypes,lpvartypes,lpparser,lpcompiler,{lputils,}lpeval,lpinterpreter,lpmessages,
+  gzctnrSTL,
+  LazUTF8,
+  uzbLogTypes,uzcLog,
+  uzelongprocesssupport,
+  uzcLapeScriptsImplBase,uzccommandsabstract;
+
+type
+  TScriptsType=string;
+
+  TFileData=record
+    Name:string;
+    Age:Int64;
+  end;
+
+  TLAPEData=record
+    //FParser:TLapeTokenizerBase;
+    FCompiler:TLapeCompiler;
+    FCompiled:Boolean;
+  end;
+
+  PTScriptData=^TScriptData;
+  TScriptData=record
+    FileData:TFileData;
+    LAPEData:TLAPEData;
+    Ctx:TBaseScriptContext;
+    FIndividualCDA:TCompilerDefAdders;
+    constructor CreateRec(const AFileName:string);
+    procedure MakeEmpty;
+  end;
+
+  {TExternalScriptData=record
+    ScriptData:TScriptData;
+    ScriptType:TScriptsType;
+  end;}
+
+  TScriptName2ScriptDataMap=class(GKey2DataMap<String,TScriptData>)
+    destructor Destroy;override;
+  end;
+
+  TScriptsManager=class
+    FScriptType:String;
+    FScriptFileMask:String;
+    SN2SD:TScriptName2ScriptDataMap;
+    FCDA:TCompilerDefAdders;
+    CtxClass:TMetaScriptContext;
+    CtxCreateMode:TScriptContextCreateMode;
+
+    procedure FoundScriptFile(const FileName:String;PData:Pointer);
+
+    constructor Create(const AScriptsType:String;ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;ACDA:TCompilerDefAdders);
+    destructor Destroy;override;
+
+    procedure ScanDir(const DirPath:string);
+    procedure ScanDirs(const DirPaths:string);
+
+    procedure RunScript(const ACommandContext:TZCADCommandContext;const AScriptName:string);overload;
+    function CreateExternalScriptData(const AScriptName:string;AICtxClass:TMetaScriptContext;AICDA:TCompilerDefAdders):TScriptData;
+    class procedure FreeExternalScriptData(var ESD:TScriptData);
+    procedure RunScript(const ACommandContext:TZCADCommandContext;var SD:TScriptData);overload;
+    procedure CheckScriptActuality(const ACommandContext:TZCADCommandContext;var SD:TScriptData);
+  end;
+
+  TScriptsTypeManager=class
+    private
+      type
+        TScriptTypeDesc=record
+          ScriptsType:TScriptsType;
+          Description:string;
+          CtxClass:TMetaScriptContext;
+          CtxCreateMode:TScriptContextCreateMode;
+          FCDA:TCompilerDefAdders;
+          constructor CreateRec(const AScriptsType:TScriptsType;ADescription:string;ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;AFCDA:TCompilerDefAdders);
+        end;
+        PTScriptTypeData=^TScriptTypeData;
+        TScriptTypeData=record
+          Desc:TScriptTypeDesc;
+          Manager:TScriptsManager;
+          constructor CreateRec(ADesc:TScriptTypeDesc;AManager:TScriptsManager=nil);
+        end;
+        TScriptsType2ScriptDataMap=class (GKey2DataMap<TScriptsType,TScriptTypeData>)
+          destructor Destroy;override;
+        end;
+      var
+        STN2SND:TScriptsType2ScriptDataMap;
+    private
+      function CreateSTN2SNDIfNeeded:boolean;//true if it has just been created
+    public
+      constructor Create;
+      destructor Destroy;override;
+      function CreateType(const AScriptsType:TScriptsType;ADescription:string;
+        ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;
+        AFCDA:TCompilerDefAdders):TScriptsManager;
+  end;
+
+var
+  STManager:TScriptsTypeManager;
+  LapeLMId:TModuleDesk;
+
+implementation
+
+const
+  cScriptStypeSmaskSnofFound='Script "%s" (type "%s", file mask "%s") not found';
+
+constructor TScriptsTypeManager.TScriptTypeDesc.CreateRec(const AScriptsType:TScriptsType;ADescription:string;ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;AFCDA:TCompilerDefAdders);
+begin
+  ScriptsType:=AScriptsType;
+  Description:=ADescription;
+  CtxClass:=ACtxClass;
+  CtxCreateMode:=ACtxCreateMode;
+  FCDA:=AFCDA;
+end;
+constructor TScriptsTypeManager.TScriptTypeData.CreateRec(ADesc:TScriptTypeDesc;AManager:TScriptsManager=nil);
+begin
+  Desc:=ADesc;
+  Manager:=AManager;
+end;
+
+function TScriptsTypeManager.CreateSTN2SNDIfNeeded:boolean;
+begin
+  if STN2SND<>nil then
+    exit(false);
+  STN2SND:=TScriptsType2ScriptDataMap.create;
+  result:=true;
+end;
+
+constructor TScriptsTypeManager.Create;
+begin
+  STN2SND:=nil;
+end;
+
+destructor TScriptsTypeManager.Destroy;
+begin
+  if STN2SND<>nil then
+    FreeAndNil(STN2SND);
+end;
+
+destructor TScriptName2ScriptDataMap.Destroy;
+var
+  sd:TScriptName2ScriptDataMap.TDictionaryPair;
+begin
+  for sd in self do begin
+    sd.Value.Ctx.free;
+    sd.Value.LAPEData.FCompiler.free;
+  end;
+  inherited;
+end;
+
+destructor TScriptsTypeManager.TScriptsType2ScriptDataMap.Destroy;
+var
+  std:TScriptsTypeManager.TScriptsType2ScriptDataMap.TDictionaryPair;
+begin
+  for std in self do begin
+    //setlength(std.Desc.FCDA,0);
+    std.Value.Manager.Free;
+  end;
+  inherited;
+end;
+
+function TScriptsTypeManager.CreateType(const AScriptsType:TScriptsType;ADescription:string;ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;AFCDA:TCompilerDefAdders):TScriptsManager;
+  function addScriptsType:TScriptsManager;
+  begin
+    result:=TScriptsManager.Create(AScriptsType,ACtxClass,ACtxCreateMode,AFCDA);
+    STN2SND.Add(AScriptsType,TScriptTypeData.CreateRec(TScriptTypeDesc.CreateRec(AScriptsType,ADescription,ACtxClass,ACtxCreateMode,AFCDA),result));
+  end;
+var
+  PSTD:PTScriptTypeData;
+begin
+  if CreateSTN2SNDIfNeeded then
+    result:=addScriptsType
+  else begin
+    if STN2SND.tryGetMutableValue(AScriptsType,PSTD) then
+      result:=PSTD.Manager
+    else
+      result:=addScriptsType;
+  end;
+end;
+
+constructor TScriptData.CreateRec(const AFileName:string);
+begin
+  FileData.Name:=AFileName;
+  FileData.Age:=-1;
+  //LAPEData.FParser:=nil;
+  LAPEData.FCompiler:=nil;
+  LAPEData.FCompiled:=False;
+  Ctx:=nil;
+end;
+procedure TScriptData.MakeEmpty;
+begin
+  FileData.Age:=0;
+  FileData.Name:='';
+  LAPEData.FCompiler:=nil;
+  LAPEData.FCompiled:=false;
+  Ctx:=nil;
+  FIndividualCDA:=[];
+end;
+
+constructor TScriptsManager.Create(const AScriptsType:String;ACtxClass:TMetaScriptContext;ACtxCreateMode:TScriptContextCreateMode;ACDA:TCompilerDefAdders);
+begin
+  FScriptType:=AScriptsType;
+  FScriptFileMask:=format('*.%s',[AScriptsType]);
+  SN2SD:=TScriptName2ScriptDataMap.Create;
+  CtxClass:=ACtxClass;
+  CtxCreateMode:=ACtxCreateMode;
+  FCDA:=ACDA;
+end;
+
+destructor TScriptsManager.Destroy;
+begin
+  SN2SD.Destroy;
+end;
+
+
+procedure TScriptsManager.FoundScriptFile(const FileName:String;PData:Pointer);
+var
+  scrname:string;
+  PSD:PTScriptData;
+begin
+  scrname:=UpperCase(ChangeFileExt(ExtractFileName(FileName),''));
+  if not SN2SD.tryGetMutableValue(scrname,PSD) then begin
+    SN2SD.Add(scrname,TScriptData.CreateRec(FileName));
+  end;
+end;
+
+procedure TScriptsManager.CheckScriptActuality(const ACommandContext:TZCADCommandContext;var SD:TScriptData);
+var
+  cda:TCompilerDefAdder;
+  fa:Int64;
+  ctxmode:TLapeScriptContextModes;
+  CDAS:TCompilerDefAdders;
+begin
+  try
+    fa:=FileAge(SD.FileData.Name);
+    if (SD.LAPEData.FCompiler=nil)or(SD.FileData.Age=-1)or(SD.FileData.Age<>fa)or(CtxCreateMode=LSCMRecreate)then begin
+      if SD.LAPEData.FCompiler<>nil then
+        SD.LAPEData.FCompiler.Destroy;
+      SD.LAPEData.FCompiler:=TLapeCompiler.Create(TLapeTokenizerFile.Create(SD.FileData.Name,TEncoding.UTF8));
+      SD.LAPEData.FCompiled:=False;
+      SD.FileData.Age:=fa;
+      ctxmode:=DoAll;
+    end else
+      ctxmode:=DoCtx;
+    if SD.Ctx=nil then
+      SD.Ctx:=CtxClass.CreateContext;
+    if length(SD.FIndividualCDA)=0 then
+      CDAS:=FCDA
+    else
+      CDAS:=SD.FIndividualCDA;
+    for cda in CDAS do
+      cda(ACommandContext,ctxmode,SD.Ctx,SD.LAPEData.FCompiler);
+  except
+    on E: Exception do
+      begin
+        ProgramLog.LogOutFormatStr('TScriptsManager.CheckScriptActuality "%s"',[E.Message],LM_Error,LapeLMId,MO_SM or MO_SH);
+        FreeAndNil(SD.LAPEData.FCompiler);
+      end;
+  end;
+end;
+
+procedure TScriptsManager.RunScript(const ACommandContext:TZCADCommandContext;const AScriptName:string);
+var
+  scrname:string;
+  PSD:PTScriptData;
+begin
+  scrname:=UpperCase(AScriptName);
+  if SN2SD.tryGetMutableValue(scrname,PSD) then
+    RunScript(ACommandContext,PSD^)
+  else
+    raise Exception.CreateFmt(cScriptStypeSmaskSnofFound,[AScriptName,FScriptType,FScriptFileMask]);
+end;
+procedure TScriptsManager.RunScript(const ACommandContext:TZCADCommandContext;var SD:TScriptData);
+var
+  lpsh:TLPSHandle;
+begin
+  CheckScriptActuality(ACommandContext,SD);
+  try
+    try
+      if not SD.LAPEData.FCompiled then begin
+        lpsh:=LPS.StartLongProcess('Compile script',self);
+        try
+          SD.LAPEData.FCompiled:=SD.LAPEData.FCompiler.Compile;
+        finally
+          LPS.EndLongProcess(lpsh);
+        end;
+      end;
+      if not SD.LAPEData.FCompiled then
+        LapeExceptionFmt('Error compiling file "%s"',[SD.FileData.Name]);
+      lpsh:=LPS.StartLongProcess('Run script',self);
+      try
+        RunCode(SD.LAPEData.FCompiler.Emitter);
+      finally
+        LPS.EndLongProcess(lpsh);
+      end;
+    except
+      on E: Exception do
+      begin
+        ProgramLog.LogOutFormatStr('TScriptsManager.RunScript "%s"',[E.Message],LM_Error,LapeLMId,{MO_SM or} MO_SH);
+        FreeAndNil(SD.LAPEData.FCompiler);
+      end;
+    end;
+  finally
+    if CtxCreateMode=LSCMRecreate then
+      FreeAndNil(SD.Ctx)
+    else
+      SD.Ctx.CleanUp;
+  end;
+end;
+
+function TScriptsManager.CreateExternalScriptData(const AScriptName:string;AICtxClass:TMetaScriptContext;AICDA:TCompilerDefAdders):TScriptData;
+var
+  scrname:string;
+  PSD:PTScriptData;
+begin
+  scrname:=UpperCase(AScriptName);
+  result.LAPEData.FCompiler:=nil;
+  result.FileData.Age:=-1;
+  result.FIndividualCDA:=AICDA;
+  if SN2SD.tryGetMutableValue(scrname,PSD) then begin
+    result.FileData.Name:=PSD^.FileData.Name;
+    if AICtxClass<>nil then
+      result.Ctx:=AICtxClass.Create
+    else if CtxClass<>nil then
+      result.Ctx:=CtxClass.Create
+    else
+      result.Ctx:=nil;
+  end else begin
+    Result.MakeEmpty;
+    raise Exception.CreateFmt(cScriptStypeSmaskSnofFound,[AScriptName,FScriptType,FScriptFileMask]);
+    {if AICtxClass<>nil then
+      result.Ctx:=AICtxClass.Create
+    else
+      result.Ctx:=nil;}
+  end;
+end;
+class procedure TScriptsManager.FreeExternalScriptData(var ESD:TScriptData);
+begin
+  FreeAndNil(ESD.LAPEData.FCompiler);
+  FreeAndNil(ESD.Ctx);
+end;
+
+procedure TScriptsManager.ScanDir(const DirPath:string);
+begin
+  FromDirIterator(utf8tosys(DirPath),FScriptFileMask,'',nil,FoundScriptFile);
+end;
+procedure TScriptsManager.ScanDirs(const DirPaths:string);
+begin
+  FromDirsIterator(utf8tosys(DirPaths),FScriptFileMask,'',nil,FoundScriptFile);
+end;
+
+initialization
+  LapeLMId:=ProgramLog.RegisterModule('LAPEScripts');
+  STManager:=TScriptsTypeManager.Create;
+finalization
+  STManager.Free;
+end.

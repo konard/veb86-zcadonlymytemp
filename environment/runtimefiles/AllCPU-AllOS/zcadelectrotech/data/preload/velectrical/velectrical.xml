@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <PalettesContent>
+    <BlockLib Type="Tree" Caption='Blocks' ImagesWidth='24'>
+      <ZTreeNode Caption='Velectrical'>
+	    <ZTreeNode Caption='Plan'>
+		    <ZTreeNode Caption='Risers'>
+      	   <ZTreeCommand Command="Insert(DEVICE_EL_VL_CABLE_BREAK)" Img='DEVICE_EL_VL_CABLE_BREAK_300' Caption='Обрыв'/>
+      	   <ZTreeCommand Command="Insert(DEVICE_EL_VL_CABLE_UP)" Img='DEVICE_EL_VL_CABLE_UP_300' Caption='Кабель в верх'/>
+      	   <ZTreeCommand Command="Insert(DEVICE_EL_VL_CABLE_DOWN)" Img='DEVICE_EL_VL_CABLE_DOWN_300' Caption='Кабель в низ'/>
+           <ZTreeCommand Command="Insert(DEVICE_EL_VL_CABLE_FROMDOWN)" Img='DEVICE_EL_VL_CABLE_FROMDOWN_300' Caption='Кабель c низу'/>
+      	   <ZTreeCommand Command="Insert(DEVICE_EL_VL_CABLE_FROMUP)" Img='DEVICE_EL_VL_CABLE_FROMUP_300' Caption='Кабель c верху'/>
+			</ZTreeNode>	
+		    <ZTreeNode Caption='Shields'>
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHR1)" Caption='Щит распределительный' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHR05)" Caption='Щит распределительный 1/2' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHO1)" Caption='Щит освещения' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHO05)" Caption='Щит освещения 1/2' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHAO1)" Caption='Щит аварийного освещения' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHAO05)" Caption='Щит аварийного освещения 1/2' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHU1)" Caption='Щит управления вид 1' />
+              <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHU2)" Caption='Щит управления вид 2' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_SHUVENT)" Caption='Щит управления вентиляции' />
+			</ZTreeNode>	
+		    <ZTreeNode Caption='ElReceiver'>
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_MOTOR)" Caption='Двигатель' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_HEATER)" Caption='Электрообогреватель' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_BU)" Caption='Блок управления' />
+              <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_ARK)" Caption='Прибор ПКОП' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_VALVENO)" Caption='Клапан нормально открытый' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_VALVENC)" Caption='Клапан нормально закрытый' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_POWER_CABLEOUT)" Caption='Выпуск кабеля' />			  
+			</ZTreeNode>			
+		    <ZTreeNode Caption='Sockets'>
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P31IN)" Caption='Розетка СП31 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P31IN)" Caption='Розетка СП31 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3P31IN)" Caption='Розетка СП31 3Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_4P31IN)" Caption='Розетка СП31 4Р' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3F31IN)" Caption='Розетка СП31 1P 380V' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P54IN)" Caption='Розетка СП54 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P54IN)" Caption='Розетка СП54 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3P54IN)" Caption='Розетка СП54 3Р' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P31OUT)" Caption='Розетка ОП31 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P31OUT)" Caption='Розетка ОП31 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3P31OUT)" Caption='Розетка ОП31 3Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3F31OUT)" Caption='Розетка ОП31 1P 380V' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P54OUT)" Caption='Розетка ОП54 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P54OUT)" Caption='Розетка ОП54 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3P54OUT)" Caption='Розетка ОП54 3Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3F54OUT)" Caption='Розетка ОП54 1P 380V' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P44OUT)" Caption='Розетка ОП44 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P44OUT)" Caption='Розетка ОП44 2Р' />		
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_1P40BUS)" Caption='Розетка BUS40 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_2P40BUS)" Caption='Розетка BUS40 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_3P40BUS)" Caption='Розетка BUS40 3Р' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_BOXJUNCTION)" Caption='Коробка вводная/проходная' />	
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_DISTRIBUTIONBOX)" Caption='Коробка ответвительная' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_CABLETERMINATION)" Caption='Концевая кабельная муфта' />	
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_ELFUNNELDRAIN)" Caption='Электрическая воронка с гр кабелем' />	
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SOCKET_RODENTPROTECT)" Caption='Эл барьер от грызунов' />
+			  
+			</ZTreeNode>	
+		    <ZTreeNode Caption='Lighting'>
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_YTR)" Caption='Ящик ЯТПР' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_600x600)" Caption='Светильник 600х600' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_2x36)" Caption='Светильник 2х36' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_2x18)" Caption='Светильник 2х18' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_R4)" Caption='Светильник R4' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_R3)" Caption='Светильник R3' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_LIGHT_VYHOD)" Caption='Светильник Выход' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1P31IN)" Caption='Выключатель СП31 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_2P31IN)" Caption='Выключатель СП31 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1PP31IN)" Caption='Выключатель проходной СП31 1PP' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1P31OUT)" Caption='Выключатель ОП31 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_2P31OUT)" Caption='Выключатель ОП31 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1PP31OUT)" Caption='Выключатель проходной ОП31 1PP' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1P54OUT)" Caption='Выключатель ОП54 1Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_2P54OUT)" Caption='Выключатель ОП54 2Р' />
+			  <ZTreeCommand Command="Insert(DEVICE_VEL_SWITCH_1PP54OUT)" Caption='Выключатель проходной ОП54 1PP' />
+			</ZTreeNode>		
+        </ZTreeNode>
+        <ZTreeNode Caption='Schemes'>
+		    <ZTreeNode Caption='Shield diagram'>
+				<ZTreeCommand Command="Insert(VSCHEMA_PANEL_SIDE)"/>
+			    <ZTreeCommand Command="Insert(DEVICE_VSCHEMA_PANEL_IN)"/>
+			    <ZTreeCommand Command="Insert(DEVICE_VSCHEMA_PANEL_OUT)"/> 
+			</ZTreeNode>
+		    <ZTreeNode Caption='Shield devices'>
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QF)" Caption='Автоматический выключатель' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QF_N)" Caption='Автоматический выключатель, 4P' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QS)" Caption='Выключатель нагрузки' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QS_N)" Caption='Выключатель нагрузки, 4P'/> 
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QFD)" Caption='АВДТ' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_AFDD)" Caption='УЗДП' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_QD)" Caption='УЗО' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_INDEPRELEASE)" Caption='Расцепитель независимый' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_FU)" Caption='Предохранители (плавкие вставки)' />			  
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_TT)" Caption='Трансформатор тока' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_WH)" Caption='Счетчик электроэнергии' />
+			  <ZTreeCommand Command="Insert(DEVICE_VSCHEMES_BU)" Caption='Ящик управления' />
+			</ZTreeNode>			
+        </ZTreeNode>
+		<ZTreeCommand Command="extdrAdd(extdrLayerControl)" Caption='Доб. расшир. упр. слоем'/>
+		<ZTreeCommand Command="DevDefSync" Caption='Синхрон. упр. слоем'/>	
+      </ZTreeNode>
+    </BlockLib>
+  </PalettesContent>
+</CONFIG>

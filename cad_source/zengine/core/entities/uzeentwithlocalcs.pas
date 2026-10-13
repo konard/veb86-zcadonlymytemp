@@ -1,0 +1,222 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+unit uzeentwithlocalcs;
+{$Mode delphi}{$H+}
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  uzepalette,uzgldrawcontext,uzedrawingdef,uzeentity,uzegeometrytypes,
+  uzctnrVectorBytesStream,uzeentwithmatrix,uzeTypes,
+  uzegeometry,uzeffdxfsupport,SysUtils,uzeentsubordinated,uzestyleslayers,
+  uzMVReader,uzbLogIntf,uzestrconsts;
+
+type
+  PGDBObjWithLocalCS=^GDBObjWithLocalCS;
+
+  GDBObjWithLocalCS=object(GDBObjWithMatrix)
+    Local:GDBObj2dprop;
+
+    //**получить на чтение координаты в мировой системе координат
+    P_insert_in_WCS:TzePoint3d;
+    lod:byte;
+    constructor init(own:Pointer;layeraddres:PGDBLayerProp;LW:smallint);
+    constructor initnul(owner:PGDBObjGenericWithSubordinated);
+    procedure SaveToDXFObjPostfix(var outStream:TZctnrVectorBytes);
+    {todo: проверить использование, выкинуть нах}
+    function LoadFromDXFObjShared(var rdr:TZMemReader;
+      DXFCode:integer;ptu:PExtensionData;var drawing:TDrawingDef;
+      var context:TIODXFLoadContext):boolean;
+
+    procedure FormatEntity(var drawing:TDrawingDef;
+      var DC:TDrawContext;Stage:TEFStages=EFAllStages);virtual;
+    procedure CalcObjMatrix(pdrawing:PTDrawingDef=nil);virtual;
+    function CalcObjMatrixWithoutOwner:TzeTypedMatrix4d;virtual;
+    procedure transform(const t_matrix:TzeTypedMatrix4d);virtual;
+    function GetCenterPoint:TzePoint3d;virtual;
+    procedure createfield;virtual;
+
+    procedure rtsave(refp:Pointer);virtual;
+    procedure TransformAt(p:PGDBObjEntity;t_matrix:PzeTypedMatrix4d);virtual;
+    procedure higlight(var DC:TDrawContext);virtual;
+    procedure ReCalcFromObjMatrix;virtual;
+    function IsHaveLCS:boolean;virtual;
+    function CanSimplyDrawInOCS(const DC:TDrawContext;
+      const ParamSize,TargetSize:double):boolean;inline;
+  end;
+
+implementation
+
+function GDBObjWithLocalCS.CanSimplyDrawInOCS(const DC:TDrawContext;
+  const ParamSize,TargetSize:double):boolean;
+var
+  templod:double;
+begin
+  if dc.maxdetail then
+    exit(True);
+  templod:=sqrt(objmatrix.mtr.v[0].v[0]*objmatrix.mtr.v[0].v[0]+
+    objmatrix.mtr.v[1].v[1]*objmatrix.mtr.v[1].v[1]+objmatrix.mtr.v[2].v[2]*objmatrix.mtr.v[2].v[2]);
+  templod:=(templod*ParamSize)/(dc.DrawingContext.zoom);
+  if templod>TargetSize then
+    exit(True)
+  else
+    exit(False);
+end;
+
+function GDBObjWithLocalCS.IsHaveLCS:boolean;
+begin
+  Result:=True;
+end;
+
+procedure GDBObjWithLocalCS.ReCalcFromObjMatrix;
+begin
+  Local.basis.ox:=objmatrix.mtr.v[0].Slice;
+  Local.basis.oy:=objmatrix.mtr.v[1].Slice;
+  Local.basis.oz:=objmatrix.mtr.v[2].Slice;
+
+  Local.basis.ox.Normalize;//:=normalizevertex(Local.basis.ox);
+  Local.basis.oy.Normalize;//:=normalizevertex(Local.basis.oy);
+  Local.basis.oz.Normalize;//:=normalizevertex(Local.basis.oz);
+end;
+
+procedure GDBObjWithLocalCS.higlight;
+begin
+  dc.drawer.SetColor(palette[dc.SystmGeometryColor].RGB);
+end;
+
+procedure GDBObjWithLocalCS.TransformAt;
+begin
+  objmatrix:=uzegeometry.MatrixMultiply(PGDBObjWithLocalCS(p)^.objmatrix,t_matrix^);
+  ReCalcFromObjMatrix;
+end;
+
+procedure GDBObjWithLocalCS.rtsave;
+begin
+  PGDBObjWithLocalCS(refp)^.Local.p_insert:=Local.p_insert;
+  PGDBObjWithLocalCS(refp)^.Local.Basis:=Local.Basis;
+  PGDBObjWithLocalCS(refp)^.calcobjmatrix;
+end;
+
+procedure GDBObjWithLocalCS.createfield;
+begin
+  inherited;
+  Local.P_insert:=cP3d__0__0__0;
+  P_insert_in_WCS:=cP3d__0__0__0;
+  lod:=0;
+end;
+
+function GDBObjWithLocalCS.GetCenterPoint;
+begin
+  Result:=P_insert_in_WCS;
+end;
+
+constructor GDBObjWithLocalCS.initnul;
+begin
+  ObjMatrix:=cOneMatrix;
+  Local.basis.ox:=cV3d__1__0__0;
+  Local.basis.oy:=cV3d__0__1__0;
+  Local.basis.oz:=cV3d__0__0__1;
+  local.p_insert:=cP3d__0__0__0;
+  inherited initnul(owner);
+end;
+
+constructor GDBObjWithLocalCS.init;
+var
+  powner:PGDBObjGenericWithSubordinated;
+begin
+  inherited init(own,layeraddres,LW);
+  powner:=bp.ListPos.owner;
+  if powner<>nil then begin
+    Local.basis.ox:=powner^.GetMatrix^.mtr.v[0].Slice;
+    Local.basis.oy:=powner^.GetMatrix^.mtr.v[1].Slice;
+    Local.basis.oz:=powner^.GetMatrix^.mtr.v[2].Slice;
+  end else begin
+    Local.basis.ox:=cV3d__1__0__0;
+    Local.basis.oy:=cV3d__0__1__0;
+    Local.basis.oz:=cV3d__0__0__1;
+  end;
+end;
+
+procedure GDBObjWithLocalCS.FormatEntity(var drawing:TDrawingDef;
+  var DC:TDrawContext;Stage:TEFStages=EFAllStages);
+begin
+  CalcObjMatrix;
+  CalcActualVisible(dc.DrawingContext.VActuality);
+end;
+
+function GDBObjWithLocalCS.CalcObjMatrixWithoutOwner;
+
+  procedure ReportLocalOZIsNul;
+  begin
+    zDebugLn('{EH}'+Format(rsFoundBrokenEntity,[self.GetObjTypeName,
+      '$'+IntToHex(PtrUInt(@self)),'Local.basis.oz=(0,0,0)']));
+  end;
+
+var
+  rotmatr,dispmatr:TzeTypedMatrix4d;
+begin
+  if Local.basis.oz.IsNul then begin
+    ReportLocalOZIsNul;
+    exit(cEmptyMatrix);
+  end;
+  Local.basis.ox:=GetXfFromZ(Local.basis.oz);
+  Local.basis.oy:=VectorDot(Local.basis.oz,Local.basis.ox);
+
+  Local.basis.oy.Normalize;//:=NormalizeVertex(Local.basis.oy);
+  Local.basis.oz.Normalize;//:=NormalizeVertex(Local.basis.oz);
+
+  rotmatr:=CreateMatrixFromBasis(Local.basis.ox,Local.basis.oy,Local.basis.oz);
+  dispmatr:=CreateTranslationMatrix(Local.p_insert.asVector);
+  Result:=MatrixMultiply(dispmatr,rotmatr);
+end;
+
+procedure GDBObjWithLocalCS.CalcObjMatrix;
+begin
+  if bp.ListPos.owner<>nil then
+    objmatrix:=
+      MatrixMultiply(CalcObjMatrixWithoutOwner,bp.ListPos.owner^.GetMatrix^)
+  else
+    objmatrix:=CalcObjMatrixWithoutOwner;
+
+
+  P_insert_in_WCS:=VectorTransform3D(cP3d__0__0__0,objmatrix);
+end;
+
+procedure GDBObjWithLocalCS.transform;
+begin
+  inherited;
+  ReCalcFromObjMatrix;
+end;
+
+procedure GDBObjWithLocalCS.SaveToDXFObjPostfix;
+begin
+  if (abs(local.basis.oz.x)>eps)or(abs(local.basis.oz.y)>eps)or
+    (abs(local.basis.oz.z-1)>eps) then
+    dxfvertexout(outStream,210,local.basis.oz.asPoint3d);
+end;
+
+function GDBObjWithLocalCS.LoadFromDXFObjShared;
+begin
+  Result:=inherited LoadFromDXFObjShared(rdr,DXFCode,ptu,drawing,context);
+  if not Result then
+    Result:=dxfLoadGroupCodeVertex(rdr,210,DXFCode,Local.basis.oz);
+end;
+
+begin
+end.

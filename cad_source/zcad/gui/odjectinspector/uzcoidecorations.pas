@@ -1,0 +1,823 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+
+unit uzcOIDecorations;
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  SysUtils,Graphics,LCLType,Themes,Forms,ColorBox,
+  uzOIUI,uzOIDecorations,uzccommandsabstract,uzepalette,
+  uzOIEditors,UEnumDescriptor,uzObjectInspector,uzcinfoform,
+  uzestyleslinetypes,uzestylesdim,uzctreenode,uzcfsnapeditor,
+  uzeconsts,UGDBNamedObjectsArray,uzctnrvectorstrings,
+  uzsbVarmanDef,Varman,uzcfcolors,uzestyleslayers,uzeTypes,uzcflineweights,
+  usupportgui,uzccommandsmanager,
+  StdCtrls,uzcdrawings,uzcstrconsts,Controls,Classes,uzcsysvars,
+  uzcsysparams,gzctnrVectorTypes,uzcinterface,uzcoimultiobjects,
+  uzcgui2color,uzcgui2linewidth,uzcgui2linetypes,uzcgui2arrows,
+  uzccommand_layer,uzcuitypes,uzeNamedObject,uzccommandsimpl,
+  uzcOI,uzcdrawing,uzbUnits,uzeBaseUtils,uzcTypes,uzObjectInspectorManager;
+type
+    AsyncCommHelper=class
+                         //class procedure GetVertex(Pinstance:PtrInt);
+                         //class procedure GetLength(Pinstance:PtrInt);
+                         //class procedure GetVertexX(Pinstance:PtrInt);
+                         //class procedure GetVertexY(Pinstance:PtrInt);
+                         //class procedure GetVertexZ(Pinstance:PtrInt);
+    end;
+procedure DecorateSysTypes;
+procedure ButtonTxtDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+procedure RunAnsiStringEditor(PInstance:Pointer);
+implementation
+var
+   count:integer;
+function LWDecorator(PInstance:Pointer):String;
+begin
+     result:=GetLWNameFromLW(PTGDBLineWeight(PInstance)^);
+end;
+function NamedObjectsDecorator(PInstance:Pointer):String;
+begin
+     if PGDBLayerProp(PInstance^)<>nil then
+                                           begin
+                                           result:={Tria_AnsiToUtf8}(PGDBNamedObject(ppointer(PInstance)^).Name)
+                                           end
+                                       else
+                                           result:=rsUnassigned;
+end;
+function PaletteColorDecorator(PInstance:Pointer):String;
+begin
+     result:=ColorIndex2Name(PTGDBPaletteColor(PInstance)^);
+end;
+function TColorDecorator(PInstance:Pointer):String;
+begin
+     result:=ColorToString(PColor(PInstance)^);
+end;
+function TFStringDecorator(PInstance:Pointer):String;
+begin
+     result:=PFString(PInstance)^;
+end;
+procedure CreateComboPropEditor(TheOwner:TPropEditorOwner;pinstance:pointer;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;out propeditor:TPropEditor; out cbedit:TComboBox;f:TzeUnitsFormat);
+begin
+  propeditor:=TPropEditor.Create(theowner,PInstance,ptd^,FreeOnLostFocus,f);
+  propeditor.byObjects:=true;
+  propeditor.changed:=false;
+  cbedit:=TComboBox.Create(propeditor);
+  cbedit.Text:=PTD.GetValueAsString(pinstance);
+  cbedit.OnChange:=propeditor.EditingProcess;
+  SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+  {$IFNDEF DELPHI}
+  {cbedit.ReadOnly:=true;//now it deprecated, see in SetComboSize}
+  {$ENDIF}
+end;
+
+procedure CreateTColorPropEditor(TheOwner:TPropEditorOwner;pinstance:pointer;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;out propeditor:TPropEditor; out cbedit:TColorBox;f:TzeUnitsFormat);
+begin
+  propeditor:=TPropEditor.Create(theowner,PInstance,ptd^,FreeOnLostFocus,f);
+  propeditor.byObjects:=true;
+  propeditor.changed:=false;
+  cbedit:=TColorBox.Create(propeditor);
+  cbedit.Text:=PTD.GetValueAsString(pinstance);
+  cbedit.OnChange:=propeditor.EditingProcess;
+  SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6);
+  {$IFNDEF DELPHI}
+  {cbedit.ReadOnly:=true;//now it deprecated, see in SetComboSize}
+  {$ENDIF}
+end;
+
+
+function NamedObjectsDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;NO:PTGenericNamedObjectsArray;f:TzeUnitsFormat):TEditorDesc;
+var
+    cbedit:TComboBox;
+    ir:itrec;
+    number:integer;
+    p,pcurrent:PGDBLayerProp;
+begin
+     CreateComboPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+
+     pcurrent:=PGDBLayerProp(ppointer(pinstance)^);
+
+                             p:=NO.beginiterate(ir);
+                             if p<>nil then
+                             repeat
+                                   number:=cbedit.Items.AddObject({Tria_AnsiToUtf8}(p^.Name),tobject(p));
+                                   if pcurrent=p then
+                                                     cbedit.ItemIndex:=number;
+                                   p:=NO.iterate(ir);
+                             until p=nil;
+
+     result.mode:=EM_Inplace;
+end;
+function LineWeightDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+    cbedit:TComboBox;
+    i,seli:integer;
+    currLW:TGDBLineWeight;
+procedure addLWtoC(name:string;value:TGDBLineWeight);
+begin
+     cbedit.items.AddObject(name, TObject(value));
+     if value=currLW then
+                         seli:=cbedit.Items.Count-1;
+end;
+
+begin
+     CreateComboPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+     SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+     cbedit.Style:=csOwnerDrawFixed;
+     cbedit.OnDrawItem:=TSupportLineWidthCombo.LineWBoxDrawItem;
+
+     currLW:=PTGDBLineWeight(pinstance)^;
+     seli:=0;
+
+     addLWtoC(rsByLayer,LnWtByLayer);
+     addLWtoC(rsByBlock,LnWtByBlock);
+     addLWtoC(rsdefault,LnWtByLwDefault);
+     for i := low(lwarray) to high(lwarray) do
+     begin
+          addLWtoC(GetLWNameFromN(i),lwarray[i]);
+     end;
+     cbedit.ItemIndex:=seli;
+     result.mode:=EM_Inplace;
+end;
+function LayersDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+begin
+     result:=NamedObjectsDecoratorCreateEditor(TheOwner,rect,pinstance,psa,FreeOnLostFocus,PTD,@drawings.GetCurrentDWG.LayerTable,f);
+end;
+function LTypeDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+    cbedit:TComboBox;
+begin
+     result:=NamedObjectsDecoratorCreateEditor(TheOwner,rect,pinstance,psa,FreeOnLostFocus,PTD,@drawings.GetCurrentDWG.LTypeStyleTable,f);
+     cbedit:=TComboBox(result.Editor.geteditor);
+     SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+     cbedit.Style:=csOwnerDrawFixed;
+     cbedit.OnDrawItem:=TSupportLineTypeCombo.LTypeBoxDrawItem;
+end;
+function TextStyleDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+begin
+     result:=NamedObjectsDecoratorCreateEditor(TheOwner,rect,pinstance,psa,FreeOnLostFocus,PTD,@drawings.GetCurrentDWG.TextStyleTable,f);
+end;
+function DimStyleDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+begin
+     result:=NamedObjectsDecoratorCreateEditor(TheOwner,rect,pinstance,psa,FreeOnLostFocus,PTD,@drawings.GetCurrentDWG.DimStyleTable,f);
+end;
+{Создание редактора для выбора стиля таблицы в инспекторе}
+function TableStyleDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+begin
+     result:=NamedObjectsDecoratorCreateEditor(TheOwner,rect,pinstance,psa,FreeOnLostFocus,PTD,@drawings.GetCurrentDWG.TableStyleTable,f);
+end;
+procedure _3SBooleanDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+var
+  Details: TThemedElementDetails;
+  ComboElem:TThemedButton;
+begin
+     case PTGDB3StateBool(PInstance)^ of
+          T3SB_True:
+                     begin
+                     if state=TFES_Hot then
+                                           ComboElem:=tbCheckBoxCheckedHot
+                                       else if state=TFES_Pressed then
+                                           ComboElem:=tbCheckBoxCheckedPressed
+                                       else
+                                           ComboElem:=tbCheckBoxCheckedNormal
+                     end;
+        T3SB_Fale:
+                     begin
+                     if state=TFES_Hot then
+                                           ComboElem:=tbCheckBoxUncheckedHot
+                                       else if state=TFES_Pressed then
+                                           ComboElem:=tbCheckBoxUncheckedPressed
+                                       else
+                                           ComboElem:=tbCheckBoxUncheckedNormal
+                     end;
+        T3SB_Default:
+                     begin
+                     if state=TFES_Hot then
+                                           ComboElem:=tbCheckBoxMixedHot
+                                       else if state=TFES_Pressed then
+                                           ComboElem:=tbCheckBoxMixedPressed
+                                       else
+                                           ComboElem:=tbCheckBoxMixedNormal
+                     end;
+     end;
+     Details:=ThemeServices.GetElementDetails(ComboElem);
+     ThemeServices.DrawElement(Canvas.Handle,Details,r,@boundr);
+end;
+procedure ButtonXDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+     OIUI_ButtonDraw(canvas,r,state,'x',boundr);
+end;
+procedure ButtonYDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+     OIUI_ButtonDraw(canvas,r,state,'y',boundr);
+end;
+procedure ButtonZDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+     OIUI_ButtonDraw(canvas,r,state,'z',boundr);
+end;
+procedure ButtonTxtDrawFastEditor(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+     OIUI_ButtonDraw(canvas,r,state,'T',boundr);
+end;
+procedure _3SBooleanInverse(PInstance:Pointer);
+begin
+     case PTGDB3StateBool(PInstance)^ of
+         T3SB_Fale:PTGDB3StateBool(PInstance)^:=T3SB_True;
+         T3SB_True:PTGDB3StateBool(PInstance)^:=T3SB_Default;
+         T3SB_Default:PTGDB3StateBool(PInstance)^:=T3SB_Fale;
+     end;
+end;
+
+procedure runlayerswnd(PInstance:Pointer);
+begin
+     layer_cmd(TZCADCommandContext.CreateRec(PTZCADDrawing(drawings.GetCurrentDWG),drawings.GetCurrentROOT),EmptyCommandOperands);
+end;
+procedure runcolorswnd(PInstance:Pointer);
+var
+   mr:integer;
+begin
+     if not assigned(ColorSelectForm)then
+     Application.CreateForm(TColorSelectForm, ColorSelectForm);
+     SetHeightControl(ColorSelectForm,sysvar.INTF.INTF_DefaultControlHeight^);
+     zcUI.Do_BeforeShowModal(ColorSelectForm);
+     try
+       mr:=ColorSelectForm.run(PTGDBPaletteColor(PInstance)^,true){showmodal};
+       if mr=ZCmrOk then begin
+         PTGDBPaletteColor(PInstance)^:=ColorSelectForm.ColorInfex;
+       end;
+     finally
+       zcUI.Do_AfterShowModal(ColorSelectForm);
+     end;
+     freeandnil(ColorSelectForm);
+end;
+procedure drawLWProp(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+var
+   index:TGDBLineWeight;
+   ll:integer;
+   s:String;
+begin
+     index:=PTGDBLineWeight(PInstance)^;
+     s:=GetLWNameFromLW(index);
+    if (index<1) then
+               ll:=0
+           else
+               ll:=30;
+     ARect.Left:=ARect.Left+2;
+
+     DrawLW(canvas,ARect,ll,(index) div 10,s);
+end;
+procedure drawIndexColorProp(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+var
+   index:TGDBLineWeight;
+begin
+     index:=PTGDBPaletteColor(PInstance)^;
+     DrawColor(Canvas,Index,ARect);
+end;
+function CreateEmptyEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+begin
+     result.mode:=EM_Nothing;
+     result.Editor:=nil;
+end;
+procedure runOSwnd(PInstance:Pointer);
+begin
+  SnapEditorForm:=TSnapEditorForm.Create(nil);
+  SetHeightControl(SnapEditorForm,sysvar.INTF.INTF_DefaultControlHeight^);
+  zcUI.DOShowModal(SnapEditorForm);
+  Freeandnil(SnapEditorForm);
+end;
+function ColorDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+    cbedit:TComboBox;
+    i,seli:integer;
+    currColor:TGDBPaletteColor;
+procedure addColorToC(name:string;value:TGDBPaletteColor);
+begin
+     cbedit.items.AddObject(name, TObject(value));
+     if value=currColor then
+                         seli:=cbedit.Items.Count-1;
+end;
+
+begin
+     CreateComboPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+     SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+     cbedit.Style:=csOwnerDrawFixed;
+     cbedit.OnDrawItem:=TSupportColorCombo.ColorDrawItem;
+
+     currColor:=PTGDBPaletteColor(pinstance)^;
+     seli:=-1;
+     addColorToC(ColorIndex2Name(ClByBlock),ClByBlock);
+     addColorToC(ColorIndex2Name(ClByLayer),ClByLayer);
+     for i := 1 to 7 do
+     begin
+          addColorToC(ColorIndex2Name(i),i);
+     end;
+     if seli=-1 then
+                    addColorToC(ColorIndex2Name(currColor),currColor);
+
+     result.editor.CanRunFastEditor:=true;
+     result.editor.RunFastEditorValue:=tobject(ClSelColor);
+     addColorToC(rsSelectColor,ClSelColor);
+
+     cbedit.ItemIndex:=seli;
+     result.mode:=EM_Inplace;
+end;
+
+function TColorDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+  cbedit:TColorBox;
+begin
+  CreateTColorPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+  SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6);
+  cbedit.Style:=cbedit.Style+[cbStandardColors,cbExtendedColors,cbSystemColors,cbIncludeDefault];
+  cbedit.Selected:=PColor(pinstance)^;
+  result.mode:=EM_Inplace;
+end;
+
+function TGetterSetterTColorDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+  cbedit:TColorBox;
+begin
+  CreateTColorPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+  SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6);
+  cbedit.Style:=cbedit.Style+[cbStandardColors,cbExtendedColors,cbSystemColors,cbIncludeDefault];
+  cbedit.Selected:=PTGetterSetterTColor(pinstance)^.Getter{PColor(pinstance)^};
+  result.mode:=EM_Inplace;
+end;
+function TGetterSetterTColorDecorator(PInstance:Pointer):String;
+begin
+     result:=ColorToString(PTGetterSetterTColor(pinstance)^.Getter);
+end;
+function ArrowStyleDecorator(PInstance:Pointer):String;
+begin
+     result:=GetArrowStyleName(PTArrowStyle(PInstance)^);
+end;
+
+procedure drawLTProp(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+var
+   PLT:PGDBLtypeProp;
+   s:String;
+begin
+     PLT:=ppointer(PInstance)^;
+     if plt<>nil then
+                        begin
+                             s:={Tria_AnsiToUtf8}(plt^.Name);
+                        end
+                    else
+                        begin
+                            s:=rsDifferent;
+                            if drawings.GetCurrentDWG.LTypeStyleTable.Count=0 then
+                                      exit;
+                        end;
+
+         ARect.Left:=ARect.Left+2;
+         drawLT(canvas,ARect,s,plt);
+end;
+procedure drawArrowStyleProp(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+var
+   arrowStyle:TArrowStyle;
+   s:String;
+begin
+     arrowStyle:=PTArrowStyle(PInstance)^;
+     s:=GetArrowStyleName(arrowStyle);
+     ARect.Left:=ARect.Left+2;
+     drawArrow(canvas,ARect,s,arrowStyle);
+end;
+function ArrowStyleDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+   cbedit:TComboBox;
+   selected:integer;
+begin
+     CreateComboPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+     result.editor.byObjects:=false;
+     SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+     TSupportArrowStyleCombo.FillItems(cbedit,nil);
+     TSupportArrowStyleCombo.Setup(cbedit);
+
+     selected:=ord(PTArrowStyle(pinstance)^);
+     if (selected>=0)and(selected<cbedit.Items.Count) then
+       cbedit.ItemIndex:=selected
+     else
+       cbedit.ItemIndex:=0;
+     result.mode:=EM_Inplace;
+end;
+function IsArrowStyleDataIndex(index:integer):boolean;
+begin
+     result:=(index>=ord(low(TArrowStyle)))and(index<=ord(high(TArrowStyle)));
+end;
+function GetArrowStyleDataName(PInstance:Pointer;index:integer):String;
+var
+   enumdata:PTEnumData;
+begin
+     enumdata:=PTEnumData(PInstance);
+     if (enumdata<>nil)and(index>=0)and(index<enumdata^.Enums.Count) then
+       result:=pstring(enumdata^.Enums.getDataMutable(index))^
+     else
+       if IsArrowStyleDataIndex(index) then
+         result:=GetArrowStyleName(TArrowStyle(index))
+       else
+         result:='';
+end;
+function ArrowStyleDataDecorator(PInstance:Pointer):String;
+begin
+     result:=GetArrowStyleDataName(PInstance,PTEnumData(PInstance)^.Selected);
+end;
+procedure drawArrowStyleDataProp(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+var
+   index:integer;
+   s:String;
+begin
+     index:=PTEnumData(PInstance)^.Selected;
+     if not IsArrowStyleDataIndex(index) then
+       exit;
+     s:=GetArrowStyleDataName(PInstance,index);
+     ARect.Left:=ARect.Left+2;
+     drawArrow(canvas,ARect,s,TArrowStyle(index));
+end;
+function ArrowStyleDataDecoratorCreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+var
+   cbedit:TComboBox;
+   arrowStyle:TArrowStyle;
+   selected:integer;
+begin
+     CreateComboPropEditor(TheOwner,pinstance,FreeOnLostFocus,PTD,result.editor,cbedit,f);
+     result.editor.byObjects:=false;
+     SetComboSize(cbedit,sysvar.INTF.INTF_DefaultControlHeight^-6,CBReadOnly);
+     TSupportArrowStyleCombo.Setup(cbedit);
+
+     for arrowStyle:=low(TArrowStyle) to high(TArrowStyle) do
+       cbedit.Items.Add(GetArrowStyleDataName(pinstance,ord(arrowStyle)));
+
+     selected:=PTEnumData(pinstance)^.Selected;
+     if (selected>=0)and(selected<cbedit.Items.Count) then
+       cbedit.ItemIndex:=selected
+     else
+       cbedit.ItemIndex:=0;
+     result.mode:=EM_Inplace;
+end;
+procedure RunStringEditor(PInstance:Pointer);
+var
+   modalresult:integer;
+   InfoForm:TInfoForm=nil;
+begin
+     if not assigned(InfoForm) then
+     begin
+     InfoForm:=TInfoForm.createnew(application.MainForm);
+     InfoForm.BoundsRect:=GetBoundsFromUnit(SavedUnit^,'TEdWND',ZCSysParams.notsaved.ScreenX,ZCSysParams.notsaved.Screeny);
+     end;
+     InfoForm.caption:=(rsTextEdCaption);
+     if assigned(SysVar.INTF.INTF_DefaultEditorFontHeight) then
+        InfoForm.memo.Font.Height:=SysVar.INTF.INTF_DefaultEditorFontHeight^;
+
+     InfoForm.memo.text:=pString(PInstance)^;
+     modalresult:=zcUI.DOShowModal(InfoForm);
+     if modalresult=ZCMrOk then
+                         begin
+                              pString(PInstance)^:=InfoForm.memo.text;
+                              StoreBoundsToUnit(SavedUnit^,'TEdWND',InfoForm.BoundsRect);
+                         end;
+end;
+procedure RunAnsiStringEditor(PInstance:Pointer);
+var
+   modalresult:integer;
+   InfoForm:TInfoForm=nil;
+begin
+     if not assigned(InfoForm) then
+     begin
+     InfoForm:=TInfoForm.createnew(application.MainForm);
+     InfoForm.BoundsRect:=GetBoundsFromUnit(SavedUnit^,'TEdWND',ZCSysParams.notsaved.ScreenX,ZCSysParams.notsaved.Screeny);
+     end;
+     InfoForm.caption:=(rsTextEdCaption);
+     if assigned(SysVar.INTF.INTF_DefaultEditorFontHeight) then
+        InfoForm.memo.Font.Height:=SysVar.INTF.INTF_DefaultEditorFontHeight^;
+
+     InfoForm.memo.text:=ConvertFromDxfString(UnicodeString(pString(PInstance)^));
+     modalresult:=zcUI.DOShowModal(InfoForm);
+     if modalresult=ZCMrOk then
+                         begin
+                              PAnsiString(PInstance)^:=ConvertToDxfString(InfoForm.memo.text);
+                              StoreBoundsToUnit(SavedUnit^,'TEdWND',InfoForm.BoundsRect);
+                         end;
+end;
+(*class procedure AsyncCommHelper.GetVertex(Pinstance:PtrInt);
+var
+   p:pointer;
+begin
+     if count>0 then
+                    begin
+                        dec(count);
+                        Application.QueueAsyncCall(GetVertex,PtrInt(PInstance));
+                    end
+                else
+                    begin
+                         commandmanager.PushValue('','PzePoint3d',@PInstance);
+                         if {GDBobjinsp.GDBobj}true then
+                                                  commandmanager.PushValue('','PGDBObjEntity',@GDBobjinsp.fDisplayedData.PData)
+                                              else
+                                                  begin
+                                                       p:=nil;
+                                                       commandmanager.PushValue('','PGDBObjEntity',@p)
+                                                  end;
+                         commandmanager.executecommand('GetPoint',drawings.GetCurrentDWG,drawings.GetCurrentOGLWParam);
+                         GDBobjinsp.UpdateObjectInInsp;
+                    end;
+end;*)
+
+(*class procedure AsyncCommHelper.GetLength(Pinstance:PtrInt);
+var
+   p:pointer;
+begin
+     if count>0 then
+                    begin
+                        dec(count);
+                        Application.QueueAsyncCall(GetLength,PtrInt(PInstance));
+                    end
+                else
+                    begin
+                         commandmanager.PushValue('','PGDBLength',@PInstance);
+                         if {GDBobjinsp.GDBobj}true then
+                                                  commandmanager.PushValue('','PGDBObjEntity',@GDBobjinsp.fDisplayedData.PData)
+                                              else
+                                                  begin
+                                                       p:=nil;
+                                                       commandmanager.PushValue('','PGDBObjEntity',@p)
+                                                  end;
+                         commandmanager.executecommand('GetLength',drawings.GetCurrentDWG,drawings.GetCurrentOGLWParam);
+                         GDBobjinsp.UpdateObjectInInsp;
+                    end;
+end;*)
+(*class procedure AsyncCommHelper.GetVertexX(Pinstance:PtrInt);
+var
+   p:pointer;
+begin
+     if count>0 then
+                    begin
+                        dec(count);
+                        Application.QueueAsyncCall(GetVertexX,PtrInt(PInstance));
+                    end
+                else
+                    begin
+                         commandmanager.PushValue('','PGDBXCoordinate',@PInstance);
+                         if {GDBobjinsp.GDBobj}true then
+                                                  commandmanager.PushValue('','PGDBObjEntity',@GDBobjinsp.fDisplayedData.PData)
+                                              else
+                                                  begin
+                                                       p:=nil;
+                                                       commandmanager.PushValue('','PGDBObjEntity',@p)
+                                                  end;
+                         commandmanager.executecommand('GetVertexX',drawings.GetCurrentDWG,drawings.GetCurrentOGLWParam);
+                         GDBobjinsp.UpdateObjectInInsp;
+                    end;
+end;
+class procedure AsyncCommHelper.GetVertexY(Pinstance:PtrInt);
+var
+   p:pointer;
+begin
+     if count>0 then
+                    begin
+                        dec(count);
+                        Application.QueueAsyncCall(GetVertexY,PtrInt(PInstance));
+                    end
+                else
+                    begin
+                         commandmanager.PushValue('','PGDBYCoordinate',@PInstance);
+                         if {GDBobjinsp.GDBobj}true then
+                                                  commandmanager.PushValue('','PGDBObjEntity',@GDBobjinsp.fDisplayedData.PData)
+                                              else
+                                                  begin
+                                                       p:=nil;
+                                                       commandmanager.PushValue('','PGDBObjEntity',@p)
+                                                  end;
+                         commandmanager.executecommand('GetVertexY',drawings.GetCurrentDWG,drawings.GetCurrentOGLWParam);
+                         GDBobjinsp.UpdateObjectInInsp;
+                    end;
+end;
+class procedure AsyncCommHelper.GetVertexZ(Pinstance:PtrInt);
+var
+   p:pointer;
+begin
+     if count>0 then
+                    begin
+                        dec(count);
+                        Application.QueueAsyncCall(GetVertexZ,PtrInt(PInstance));
+                    end
+                else
+                    begin
+                         commandmanager.PushValue('','PGDBZCoordinate',@PInstance);
+                         if {GDBobjinsp.GDBobj}true then
+                                                  commandmanager.PushValue('','PGDBObjEntity',@GDBobjinsp.fDisplayedData.PData)
+                                              else
+                                                  begin
+                                                       p:=nil;
+                                                       commandmanager.PushValue('','PGDBObjEntity',@p)
+                                                  end;
+                         commandmanager.executecommand('GetVertexZ',drawings.GetCurrentDWG,drawings.GetCurrentOGLWParam);
+                         GDBobjinsp.UpdateObjectInInsp;
+                    end;
+end;*)
+{procedure GetLengthFromDrawing(PInstance:PzePoint3d);
+begin
+     commandmanager.executecommandtotalend;
+     count:=1;
+     Application.QueueAsyncCall(AsyncCommHelper.GetLength,PtrInt(PInstance));
+end;}
+{procedure GetXFromDrawing(PInstance:PzePoint3d);
+begin
+     commandmanager.executecommandtotalend;
+     count:=1;
+     Application.QueueAsyncCall(AsyncCommHelper.GetVertexX,PtrInt(PInstance));
+end;
+procedure GetYFromDrawing(PInstance:PzePoint3d);
+begin
+     commandmanager.executecommandtotalend;
+     count:=1;
+     Application.QueueAsyncCall(AsyncCommHelper.GetVertexY,PtrInt(PInstance));
+end;
+procedure GetZFromDrawing(PInstance:PzePoint3d);
+begin
+     commandmanager.executecommandtotalend;
+     count:=1;
+     Application.QueueAsyncCall(AsyncCommHelper.GetVertexZ,PtrInt(PInstance));
+end;}
+
+procedure OIUI_FE_GetterSetterBooleanDraw(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+  BooleanDraw(PTGetterSetterBoolean(PInstance)^.Getter,canvas,r,state,boundr);
+end;
+procedure OIUI_FE_GetterSetterUsableIntegerUsableDraw(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+begin
+  BooleanDraw(PTGetterSetterTUsableInteger(PInstance)^.Getter.Usable,canvas,r,state,boundr);
+end;
+
+procedure OIUI_FE_GetterSetterIntegerInc(PInstance:Pointer);
+var
+  d:Integer;
+begin
+  if (@PTGetterSetterInteger(PInstance).Getter<>nil)
+  and(@PTGetterSetterInteger(PInstance).Setter<>nil)then begin
+    d:=PTGetterSetterInteger(PInstance).Getter;
+    Inc(d);
+    PTGetterSetterInteger(PInstance).Setter(d);
+  end;
+end;
+procedure OIUI_FE_GetterSetterIntegerDec(PInstance:Pointer);
+var
+  d:Integer;
+begin
+  if (@PTGetterSetterInteger(PInstance).Getter<>nil)
+  and(@PTGetterSetterInteger(PInstance).Setter<>nil)then begin
+    d:=PTGetterSetterInteger(PInstance).Getter;
+    Dec(d);
+    PTGetterSetterInteger(PInstance).Setter(d);
+  end;
+end;
+
+procedure OIUI_FE_GetterSetterBooleanInverse(PInstance:Pointer);
+begin
+  if (@PTGetterSetterBoolean(PInstance).Getter<>nil)
+    and(@PTGetterSetterBoolean(PInstance).Setter<>nil)then begin
+      PTGetterSetterBoolean(PInstance).Setter(not PTGetterSetterBoolean(PInstance).Getter);
+  end;
+end;
+
+procedure OIUI_FE_GetterSetterUsableIntegerInc(PInstance:Pointer);
+var
+  d:TUsableInteger;
+begin
+  if (@PTGetterSetterTUsableInteger(PInstance).Getter<>nil)
+  and(@PTGetterSetterTUsableInteger(PInstance).Setter<>nil)then begin
+    d:=PTGetterSetterTUsableInteger(PInstance).Getter;
+    d.Value:=d.Value+1;
+    PTGetterSetterTUsableInteger(PInstance).Setter(d);
+  end;
+end;
+procedure OIUI_FE_GetterSetterUsableIntegerDec(PInstance:Pointer);
+var
+  d:TUsableInteger;
+begin
+  if (@PTGetterSetterTUsableInteger(PInstance).Getter<>nil)
+  and(@PTGetterSetterTUsableInteger(PInstance).Setter<>nil)then begin
+    d:=PTGetterSetterTUsableInteger(PInstance).Getter;
+    d.Value:=d.Value-1;
+    PTGetterSetterTUsableInteger(PInstance).Setter(d);
+  end;
+end;
+
+procedure OIUI_FE_GetterSetterUsableIntegerUsableInverse(PInstance:Pointer);
+var
+  d:TUsableInteger;
+begin
+  if (@PTGetterSetterTUsableInteger(PInstance).Getter<>nil)
+    and(@PTGetterSetterTUsableInteger(PInstance).Setter<>nil)then begin
+      d:=PTGetterSetterTUsableInteger(PInstance).Getter;
+      d.Usable:=not d.Usable;
+      PTGetterSetterTUsableInteger(PInstance).Setter(d);
+  end;
+end;
+
+procedure DecorateSysTypes;
+begin
+  if SysUnit<>nil then begin
+    AddEditorToType(SysUnit.TypeName2PTD('Boolean'),TBaseTypesEditors.BooleanCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('ShortInt'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('Byte'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('SmallInt'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('Word'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('LongInt'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('LongWord'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('QWord'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('Double'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TZeDimLess'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TZeAngle'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TZeAngleDeg'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('String'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('AnsiString'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('AnsiString1251'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('UnicodeString'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('Single'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('Pointer'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('PtrUInt'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TEnumDataDescriptor'),TBaseTypesEditors.TEnumDataCreateEditor);
+    EnumGlobalEditor:=TBaseTypesEditors.EnumDescriptorCreateEditor;
+    AddEditorToType(SysUnit.TypeName2PTD('TCalculatedStringDescriptor'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TGetterSetterInteger'),TBaseTypesEditors.BaseCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TGetterSetterBoolean'),TBaseTypesEditors.BooleanCreateEditor);
+    AddEditorToType(SysUnit.TypeName2PTD('TGetterSetterTUsableInteger'),TBaseTypesEditors.BaseCreateEditor);
+
+
+    DecorateType(SysUnit.TypeName2PTD('TGDBLineWeight'),LWDecorator,LineWeightDecoratorCreateEditor,drawLWProp);
+    DecorateType(SysUnit.TypeName2PTD('PGDBLayerPropObjInsp'),NamedObjectsDecorator,LayersDecoratorCreateEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('PGDBLtypePropObjInsp'),NamedObjectsDecorator,LTypeDecoratorCreateEditor,drawLTProp);
+    DecorateType(SysUnit.TypeName2PTD('PGDBTextStyleObjInsp'),NamedObjectsDecorator,TextStyleDecoratorCreateEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('PGDBDimStyleObjInsp'),NamedObjectsDecorator,DimStyleDecoratorCreateEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('PGDBTableStyleObjInsp'),NamedObjectsDecorator,TableStyleDecoratorCreateEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('TGDBPaletteColor'),PaletteColorDecorator,ColorDecoratorCreateEditor,drawIndexColorProp);
+    DecorateType(SysUnit.TypeName2PTD('TArrowStyle'),ArrowStyleDecorator,ArrowStyleDecoratorCreateEditor,drawArrowStyleProp);
+    DecorateType(SysUnit.TypeName2PTD('TArrowStyleData'),ArrowStyleDataDecorator,ArrowStyleDataDecoratorCreateEditor,drawArrowStyleDataProp);
+    DecorateType(SysUnit.TypeName2PTD('TGDBOSMode'),nil,CreateEmptyEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('TColor'),TColorDecorator,TColorDecoratorCreateEditor,nil);
+    DecorateType(SysUnit.TypeName2PTD('TFString'),TFStringDecorator,nil,nil);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterInteger'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonGreatThatDraw,@OIUI_FE_GetterSetterIntegerInc);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterInteger'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonLessThatDraw,@OIUI_FE_GetterSetterIntegerDec);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterBoolean'),@OIUI_FE_BooleanGetPrefferedSize,@OIUI_FE_GetterSetterBooleanDraw,@OIUI_FE_GetterSetterBooleanInverse);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterTUsableInteger'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonGreatThatDraw,@OIUI_FE_GetterSetterUsableIntegerInc);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterTUsableInteger'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonLessThatDraw,@OIUI_FE_GetterSetterUsableIntegerDec);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGetterSetterTUsableInteger'),@OIUI_FE_BooleanGetPrefferedSize,@OIUI_FE_GetterSetterUsableIntegerUsableDraw,@OIUI_FE_GetterSetterUsableIntegerUsableInverse);
+    DecorateType(SysUnit.TypeName2PTD('TGetterSetterTColor'),TGetterSetterTColorDecorator,TGetterSetterTColorDecoratorCreateEditor,nil);
+
+
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('Integer'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonGreatThatDraw,@OIUI_FE_IntegerInc);
+    AddFastEditorToType(SysUnit.TypeName2PTD('Integer'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonLessThatDraw,@OIUI_FE_IntegerDec);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TArrayIndex'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonGreatThatDraw,@OIUI_FE_IntegerInc);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TArrayIndex'),@OIUI_FE_HalfButtonGetPrefferedSize,@OIUI_FE_ButtonLessThatDraw,@OIUI_FE_IntegerDec);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGDBPaletteColor'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonDraw,@runcolorswnd);
+    AddFastEditorToType(SysUnit.TypeName2PTD('Boolean'),@OIUI_FE_BooleanGetPrefferedSize,@OIUI_FE_BooleanDraw,@OIUI_FE_BooleanInverse);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGDB3StateBool'),@OIUI_FE_BooleanGetPrefferedSize,@_3SBooleanDrawFastEditor,@_3SBooleanInverse);
+    AddFastEditorToType(SysUnit.TypeName2PTD('PGDBLayerPropObjInsp'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonDraw,@runlayerswnd);
+    AddFastEditorToType(SysUnit.TypeName2PTD('String'),@OIUI_FE_ButtonGetPrefferedSize,@ButtonTxtDrawFastEditor,@RunStringEditor);
+    AddFastEditorToType(SysUnit.TypeName2PTD('AnsiString'),@OIUI_FE_ButtonGetPrefferedSize,@ButtonTxtDrawFastEditor,@RunAnsiStringEditor);
+    //AddFastEditorToType(SysUnit.TypeName2PTD('GDBCoordinates3D'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonCrossDraw,@GetVertexFromDrawing,true);
+    //AddFastEditorToType(SysUnit.TypeName2PTD('GDBLength'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@GetLengthFromDrawing,true);
+    //AddFastEditorToType(SysUnit.TypeName2PTD('TzeXUnits'),@OIUI_FE_ButtonGetPrefferedSize,@ButtonXDrawFastEditor,@GetXFromDrawing,true);
+    //AddFastEditorToType(SysUnit.TypeName2PTD('TzeYUnits'),@OIUI_FE_ButtonGetPrefferedSize,@ButtonYDrawFastEditor,@GetYFromDrawing,true);
+    //AddFastEditorToType(SysUnit.TypeName2PTD('TzeZUnits'),@OIUI_FE_ButtonGetPrefferedSize,@ButtonZDrawFastEditor,@GetZFromDrawing,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TGDBOSMode'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonDraw,@runOSwnd);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSPrimitiveDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectEnts,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSPrimitiveDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisEnts,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSBlockNamesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectBlocsByName,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSBlockNamesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisBlocsByName,true);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSTextsStylesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectTextsByStyle,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSTextsStylesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisTextsByStyle,true);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsLayersDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectEntsByLayer,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsLayersDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisEntsByLayer,true);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsLinetypesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectEntsByLinetype,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsLinetypesDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisEntsByLinetype,true);
+
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsExtendersDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonHLineDraw,@DeselectEntsByExtender,true);
+    AddFastEditorToType(SysUnit.TypeName2PTD('TMSEntsExtendersDetector'),@OIUI_FE_ButtonGetPrefferedSize,@OIUI_FE_ButtonMultiplyDraw,@SelectOnlyThisEntsByExtender,true);
+  end;
+end;
+end.

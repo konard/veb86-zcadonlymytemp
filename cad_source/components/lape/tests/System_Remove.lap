@@ -1,0 +1,19 @@
+{$assertions on}
+
+type
+  TPoint = record X,Y:Integer; end;
+
+var
+  Arr: array of TPoint;
+begin
+  Arr := [[0,0],[1,1],[2,2],[1,1]];
+
+  Assert(Remove(TPoint([2,2]), Arr) = [2,2]);
+  Assert(Remove(TPoint([2,2]), Arr) = [0,0]);
+  Assert(Length(Arr) = 3);
+
+  Assert(Remove(TPoint([1,1]), Arr) = [1,1]);
+  Assert(Length(Arr) = 2);
+  Assert(Remove(TPoint([1,1]), Arr) = [1,1]);
+  Assert(Length(Arr) = 1);
+end;

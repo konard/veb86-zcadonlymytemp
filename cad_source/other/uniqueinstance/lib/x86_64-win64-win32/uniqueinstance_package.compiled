@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="4.99"/>
+  <Compiler Value="C:\fpclaz\pp\bin\x86_64-win64\fpc.exe" Date="1550621805"/>
+  <Params Value="-MObjFPC -Scgi -O2 -g -gl -l -vewnhibq -FuC:\zcad\zcad\cad_source\other\uniqueinstance\ -FuC:\fpclaz\lazarus\packager\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazutils\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\freetype\lib\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64\win32 -FUC:\zcad\zcad\cad_source\other\uniqueinstance\lib\x86_64-win64-win32\ -dLCL -dLCLwin32 uniqueinstance_package.pas"/>
+</CONFIG>

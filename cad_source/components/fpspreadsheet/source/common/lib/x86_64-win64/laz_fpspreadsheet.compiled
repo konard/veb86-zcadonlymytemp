@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="4.99"/>
+  <Compiler Value="C:\fpclaz\pp\bin\x86_64-win64\fpc.exe" Date="1550621805"/>
+  <Params Value="-MObjFPC -Scgi -O1 -g -gl -l -vewnhibq -vm6058,5028,4055,2005 -FiC:\zcad\zcad\cad_source\components\fpspreadsheet\source -FuC:\zcad\zcad\cad_source\components\fpspreadsheet\ -FuC:\zcad\zcad\cad_source\components\fpspreadsheet\source\common -FuC:\fpclaz\lazarus\packager\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazutils\lib\x86_64-win64 -FUC:\zcad\zcad\cad_source\components\fpspreadsheet\source\common\lib\x86_64-win64\ -dDisableWrapperFunctions laz_fpspreadsheet.pas"/>
+</CONFIG>

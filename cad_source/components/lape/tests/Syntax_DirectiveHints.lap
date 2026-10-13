@@ -1,0 +1,36 @@
+{$HINTS ON}
+
+type
+  TPoint = record
+    x,y: Integer;
+  end deprecated;
+  TPointArray = array of TPoint;
+  TPoint3D = record
+    p: TPoint;
+    z: Double;
+  end;
+
+var   I_AM_DEPRECATED: Double deprecated;
+const I_AM_EXPERIMENTAL = Int32(5) experimental;
+
+function Test: Int32; overload; deprecated;
+var
+  i: Int32;
+begin
+  I_AM_DEPRECATED += 1;
+  i := I_AM_EXPERIMENTAL;
+end;
+
+function Test(I: Int32): Int32; overload; deprecated 'Test'; experimental; unimplemented;
+begin
+end;
+
+procedure Pointer.Test; deprecated;
+begin
+end;
+
+begin
+  Test();
+  Test(1);
+  Pointer(1).Test();
+end.

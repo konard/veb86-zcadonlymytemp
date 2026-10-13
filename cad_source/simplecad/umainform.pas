@@ -1,0 +1,771 @@
+unit umainform;
+
+{$mode objfpc}{$H+}
+{$define dxfio}
+interface
+
+uses
+  uzbpaths,
+  LCLType,Classes, SysUtils, FileUtil, Math,
+  Forms, Controls, Graphics, Dialogs,
+  ExtCtrls, StdCtrls, Spin,
+  {From ZCAD}
+                                                                         //zcad memorymanager
+   uzegeometrytypes,                                              //zcad basetypes
+  uzegeometry,                                                                     //some mathematical and geometrical support
+  uzefontmanager,uzeFontFileFormatSHX,                                                        //fonts manager and SHX fileformat support
+  uzglviewareaabstract,uzglviewareageneral,uzgldrawcontext,                          //generic view areas support
+  uzglviewareaogl,uzglviewareagdi,                                           //gdi and opengl wiewareas
+  uzeentity,                                                                    //generic entitys objects parent
+  uzeent3Dface,uzeentlwpolyline,uzeentpoint,uzeentpolyline,uzeenttext,uzeentline,uzeentcircle,uzeentarc,         //entitys created by program
+  {$ifdef dxfio}
+  uzeffdxf,uzeffDxfOut,                                                                        //dxf fileformat support
+  uzeffmanager,
+  uzeentmtext,uzeentdimensiongeneric,uzeentdimaligned,uzeentdimrotated,uzeentsolid,//some other entitys can be found in loaded files
+  uzeentspline,
+  {$endif}
+  uzestyleslayers,uzestylestexts,                                            //layers and text steles support
+  uzeentitiestree,                                                                  //entities spatial binary tree
+  uzedrawingsimple,                                                            //drawing
+  uzestyleslinetypes,UGDBNamedObjectsArray,
+  uzeTypes,
+  gzctnrVectorTypes,uzeconsts;                                                           //some consts
+
+const
+  lttypename='test_lt';
+
+type
+
+  { TForm1 }
+
+  TForm1 = class(TForm)
+    BtnAdd3DFaces1: TButton;
+    BtnAddCircles1: TButton;
+    BtnAddLWPolyLines1: TButton;
+    BtnAddLines: TButton;
+    BtnAddCircles: TButton;
+    BtnAdd3DpolyLines: TButton;
+    BtnAdd3DFaces: TButton;
+    BtnEraseSel1: TButton;
+    BtnProcessObjects1: TButton;
+    BtnProcessObjects2: TButton;
+    BtnRandomObjectRedraw: TButton;
+    BtnSelectAll: TButton;
+    BtnRebuild: TButton;
+    BtnEraseSel: TButton;
+    BtnAddTexts: TButton;
+    BtnOpenDXF: TButton;
+    BtnSaveDXF: TButton;
+    BtnProcessObjects: TButton;
+    CheckBox1: TCheckBox;
+    ChkBox3D: TCheckBox;
+    ComboBox1: TComboBox;
+    GroupBox1: TGroupBox;
+    GroupBox2: TGroupBox;
+    Label1: TLabel;
+    Memo1: TMemo;
+    OpenDialog1: TOpenDialog;
+    Panel1: TPanel;
+    PanelDown: TPanel;
+    PanelUp: TPanel;
+    SaveDialog1: TSaveDialog;
+    SpinEdit1: TSpinEdit;
+    Splitter1: TSplitter;
+    Splitter2: TSplitter;
+    procedure BtnAdd3DFaces1Click(Sender: TObject);    //Add 3dfaces to current drawing
+    procedure BtnAdd3DpolyLinesClick(Sender: TObject); //Add 3dpolylines to current drawing
+    procedure BtnAddArcsClick(Sender: TObject);        //Add arcs to current drawing
+    procedure BtnAddLinesClick(Sender: TObject);       //Add lines to current drawing
+    procedure BtnAddCirclesClick(Sender: TObject);     //Add circles to current drawing
+    procedure BtnAddLWPolylines1Click(Sender: TObject);//Add lwpolylines to current drawing
+    procedure BtnAddSplines1Click(Sender: TObject);
+    procedure BtnCreateAndUseLT(Sender: TObject);
+    procedure BtnProcessObjectsClick(Sender: TObject); //Move lines and circles in current drawing
+    procedure BtnRandomEntityRedrawClick(Sender: TObject);
+    procedure BtnRebuildClick(Sender: TObject);        //Rebuild spatial tree in current drawing
+    procedure BtnEraseSelClick(Sender: TObject);       //Erase selected ents in current drawing
+    procedure BtnAddTextsClick(Sender: TObject);       //Add texts to current drawing
+    procedure BtnOpenDXFClick(Sender: TObject);        //Load dxf file (if set $define dxfio)
+    procedure BtnSaveDXFClick(Sender: TObject);        //Save dxf file (if set $define dxfio)
+    procedure BtnSelectAllClick(Sender: TObject);      //Select all ents in current drawing
+    procedure OffEntLayerClick(Sender: TObject);       //Off layers selected ents in current drawing
+    procedure OnAllLayerClick(Sender: TObject);        //On all layer
+    procedure TreeChange(Sender: TObject);             //"Show tree" checkbox click
+    procedure _DestroyApp(Sender: TObject);
+    procedure _FormCreate(Sender: TObject);
+    procedure _KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure _FormShow(Sender: TObject);
+
+    procedure _StartLongProcess(TotalProgressCount:Integer{unused in this example};ProcessName:string);//proc for start time interval measure
+    procedure _EndLongProcess;//proc for end time interval measure
+  private
+    pdrawing1,pdrawing2:PTSimpleDrawing;
+    { private declarations }
+  public
+    { public declarations }
+  end; 
+
+var
+  Form1: TForm1;
+  LPTime:Tdatetime;
+  pname:string;
+
+implementation
+
+{$R *.lfm}
+function GetCurrentDrawing:PTSimpleDrawing;//get current drawing (OPENGL or GDI) set in ComboBox1
+begin
+     if Form1.ComboBox1.ItemIndex=0 then
+                                        result:=Form1.pdrawing1
+                                    else
+                                        result:=Form1.pdrawing2;
+end;
+procedure TForm1._StartLongProcess(TotalProgressCount:integer;ProcessName:string);//get current drawing (OPENGL or GDI) set in ComboBox1
+begin
+     LPTime:=now;
+     pname:=ProcessName;
+end;
+procedure TForm1._EndLongProcess;
+var
+  Time:Tdatetime;
+  ts:string;
+begin
+ time:=(now-LPTime)*10e4;
+ str(time:3:4,ts);
+  if pname='' then
+                   memo1.Append(format('Done.  %s second',[ts]))
+               else
+                   memo1.Append(pname+format(':  %s second',[ts]));
+  pname:=''
+end;
+
+procedure TForm1._KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);//key pressed handle, now unused in this example
+begin
+  if Key=VK_ESCAPE then
+  begin
+       GetCurrentDrawing^.SelObjArray.Free;
+       GetCurrentDrawing^.GetCurrentROOT^.ObjArray.DeSelect(GetCurrentDrawing^.wa.param.SelDesc.Selectedobjcount,nil);
+       GetCurrentDrawing^.HardReDraw;
+       Key:=0;
+  end;
+  if Key=VK_DELETE then
+  begin
+       BtnEraseSelClick(nil);
+       Key:=0;
+  end;
+end;
+
+procedure TForm1._FormShow(Sender: TObject);
+begin
+    //_FormCreate(nil);
+end;
+
+procedure TForm1._FormCreate(Sender: TObject);//Create drawings and view areas
+var
+   i:integer;
+   ViewArea:TAbstractViewArea;
+   WADrawControl:TCADControl;
+begin
+     FontManager.CreateBaseFont;//Load default font (gewind.shx - simply vector font in program resources)
+     sysvarDISPSystmGeometryDraw:=CheckBox1.Checked;//Draw|notdraw help uzegeometry (insert points, bounding boxes...)
+
+     pdrawing1:=CreateSimpleDWG;//create drawing
+
+     //Add 10 random layers
+     for i:=1 to 10 do
+     begin
+          pdrawing1^.LayerTable.addlayer(inttostr(i),{name}
+                                         random(255),{color index}
+                                         0,          {lineweight}
+                                         true,       {layer on}
+                                         false,      {layer locked}
+                                         true,       {layer printable}
+                                         '',         {layer description}
+                                         TLOMerge    {TLOMerge - if layer already created, ignore new layer properties
+                                                      TLOLoad  - if layer already created, rewrite old layer properties});
+     end;
+
+
+     ViewArea:=TOpenGLViewArea.Create(PanelUp);//Create view area (OPENGL)
+     WADrawControl:=ViewArea.getviewcontrol;//Get window which will be drawing
+     pdrawing1^.wa:=ViewArea;//associate drwing with window
+     ViewArea.PDWG:=pdrawing1;//associate window with drawing
+
+     WADrawControl.align:=alClient;
+     WADrawControl.Parent:=PanelUp;
+     WADrawControl.show;
+
+     ViewArea.getareacaps;//setup internal view area params
+     //ViewArea.Drawer.delmyscrbuf;
+     pdrawing1^.HardReDraw;//redraw drawing on view area
+
+
+     pdrawing2:=CreateSimpleDWG;//create drawing
+
+     //Add 10 random layers
+     for i:=1 to 10 do
+     begin
+          pdrawing2^.LayerTable.addlayer(inttostr(i),random(255),0,true,false,true,'',TLOMerge);
+     end;
+
+
+     ViewArea:=TGDIViewArea.Create(PanelDown);//Create view area (GDI)
+     WADrawControl:=ViewArea.getviewcontrol;//Get window which will be drawing
+     pdrawing2^.wa:=ViewArea;//associate drwing with window
+     ViewArea.PDWG:=pdrawing2;//associate window with drawing
+
+     WADrawControl.align:=alClient;
+     WADrawControl.Parent:=PanelDown;
+     WADrawControl.show;
+
+     ViewArea.getareacaps;//setup internal view area params
+     pdrawing2^.HardReDraw;//redraw drawing on view area
+end;
+
+function CreateRandomDouble(len:Double):Double;inline;//create random double in [0..len] interval
+begin
+     result:=random*len;
+end;
+function CreateRandomVertex(len,hanflen:Double;_3d:boolean):TzePoint3d;//create random 3DVertex in [-hanflen..hanflen] interval
+begin
+     result.x:=CreateRandomDouble(len)-hanflen;
+     result.y:=CreateRandomDouble(len)-hanflen;
+     if _3d then
+                result.z:=CreateRandomDouble(len)-hanflen
+            else
+                result.z:=0;
+end;
+procedure SetEntityLayer(pobj:PGDBObjEntity;CurrentDrawing:PTSimpleDrawing);//set random layer for entity
+begin
+     pobj^.vp.Layer:=CurrentDrawing^.LayerTable.getDataMutable(random(CurrentDrawing^.LayerTable.Count));
+end;
+function CreateRandomVertex2D(len,hanflen:Double):TzePoint2d;//create random 2DVertex in [-hanflen..hanflen] interval
+begin
+     result.x:=CreateRandomDouble(len)-hanflen;
+     result.y:=CreateRandomDouble(len)-hanflen;
+end;
+
+procedure TForm1.BtnAddLinesClick(Sender: TObject);         //Add lines to drawing
+var
+   i:integer;
+   PLineEnt:PGDBObjPoint;                                    //pointer to created line
+   v1,v2:TzePoint3d;
+   dc:TDrawContext;                                         //drawing context
+   CurrentDrawing:PTSimpleDrawing;                          //pointer to current drawing
+   _3d:boolean;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add lines');                         //just for time interval measure
+
+  _3d:=Form1.ChkBox3D.Checked;
+  CurrentDrawing:=GetCurrentDrawing;                        //get cirrent drawing
+  dc:=CurrentDrawing^.CreateDrawingRC;                      //create drawing context, need for format entity
+  plt:=CurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    v1:=CreateRandomVertex(1000,500,_3d);                       //line coord
+    v2:=v1+CreateRandomVertex(1000,500,_3d).asVector;//line coord
+
+    PLineEnt:=GDBObjpoint.CreateInstance;                    //create line
+    PLineEnt^.P_insertInOCS:=v1;                        //setup coord
+    //PLineEnt^.CoordInOCS.lEnd:=v2;                          //setup coord
+    SetEntityLayer(PLineEnt,CurrentDrawing);                //Setup line propertues
+    if plt<>nil then
+      PLineEnt^.vp.LineType:=plt;
+    CurrentDrawing^.GetCurrentRoot^.AddMi(PLineEnt);       //add line to drawing
+
+    PLineEnt^.BuildGeometry(CurrentDrawing^);               //internal entity proc for create subentities,
+                                                            //for line entity this unneed, but for complex entities
+                                                            //like BlockInsert thes necessarily
+
+    PLineEnt^.formatEntity(CurrentDrawing^,dc);             //internal entity proc for create graphix representation
+  end;
+  _EndLongProcess;                                          //end interval measure
+
+  BtnRebuildClick(self);                                    //rebuild drawing spatial tree and redraw
+end;
+
+procedure TForm1.BtnAddLWPolylines1Click(Sender: TObject);         //Add lwpolylines to drawing
+var
+   i,j,vcount:integer;
+   PLWPolyLineEnt:PGDBObjLWPolyline;                               //pointer to created lwpolyline
+   v1:TzePoint2d;                                                 //lwpolyline vertex
+   lw:TSegmentParams;                                           //lwpolyline vertex width props
+   dc:TDrawContext;                                                //drawing context
+   CurrentDrawing:PTSimpleDrawing;                                 //pointer to current drawing
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add lwpolylines');                          //just for time interval measure
+
+  CurrentDrawing:=GetCurrentDrawing;                               //get cirrent drawing
+  dc:=CurrentDrawing^.CreateDrawingRC;                             //create drawing context, need for format entity
+  plt:=CurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+
+  for i:=1 to SpinEdit1.Value do
+  begin
+    PLWPolyLineEnt := GDBObjLWPolyline.CreateInstance;             //create lwpolyline
+
+    vcount:=random(8)+2;                                           //add add random polyline vertexs
+    v1:=CreateRandomVertex2D(1000,500);
+    for j:=1 to vcount do
+    begin
+         PLWPolyLineEnt^.Vertex2D_in_OCS_Array.PushBackData(v1);
+         lw.data.endw:=CreateRandomDouble(10);
+         lw.data.startw:=CreateRandomDouble(10);
+         PLWPolyLineEnt^.SgmntsParams.PushBackData(lw);
+         v1:=v1+CreateRandomVertex2D(100,50).asVector;
+    end;
+    if vcount>2 then
+                    PLWPolyLineEnt^.closed:=random(10)>5;          //random close lwpolyline
+
+    CurrentDrawing^.GetCurrentRoot^.AddMi(PLWPolyLineEnt);        //add lwpolyline to drawing
+    SetEntityLayer(PLWPolyLineEnt,GetCurrentDrawing);              //Setup line propertues
+    if plt<>nil then
+      PLWPolyLineEnt^.vp.LineType:=plt;
+    PLWPolyLineEnt^.BuildGeometry(CurrentDrawing^);                //internal entity proc for create subentities,
+                                                                   //for line entity this unneed, but for complex entities
+                                                                   //like BlockInsert thes necessarily
+
+    PLWPolyLineEnt^.formatEntity(CurrentDrawing^,dc);              //internal entity proc for create graphix representation
+  end;
+  _EndLongProcess;                                                 //end interval measure
+
+  BtnRebuildClick(self);                                           //rebuild drawing spatial tree and redraw
+end;
+
+procedure TForm1.BtnAddSplines1Click(Sender: TObject);
+var
+   i,j:integer;
+   pobj:PGDBObjSpline;
+   v1:TzePoint3d;
+   dc:TDrawContext;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add splines');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  plt:=GetCurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj := GDBObjSpline.CreateInstance;
+    v1:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    for j:=0 to 4 do
+    begin
+         pobj^.VertexArrayInOCS.PushBackData(v1);
+         v1:=v1+CreateRandomVertex(100,50,Form1.ChkBox3D.Checked).asVector;
+    end;
+    pobj^.Knots.PushBackData(0);
+    pobj^.Knots.PushBackData(0);
+    pobj^.Knots.PushBackData(0);
+    pobj^.Knots.PushBackData(0);
+    pobj^.Knots.PushBackData(1);
+    pobj^.Knots.PushBackData(2);
+    pobj^.Knots.PushBackData(2);
+    pobj^.Knots.PushBackData(2);
+    pobj^.Knots.PushBackData(2);
+    pobj^.Degree:=3;
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    if plt<>nil then
+      pobj^.vp.LineType:=plt;
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+
+procedure TForm1.BtnCreateAndUseLT(Sender: TObject);
+var
+  plt:PGDBLtypeProp;
+  linetypestr:string;//передача по var поэтому нужна переменная, исправлю
+begin
+  if GetCurrentDrawing^.LTypeStyleTable.AddItem(lttypename,plt)=IsCreated then begin
+    linetypestr:='A,1.0,-.5,1.0,-.5,0,-.5';
+    plt^.init(lttypename);
+    plt^.CreateLineTypeFrom(linetypestr);
+    plt^.Format;
+  end;
+end;
+
+procedure TForm1.BtnAdd3DFaces1Click(Sender: TObject);
+var
+   i,j:integer;
+   istriangle:boolean;
+   pobj:PGDBObj3DFace;
+   v1:TzePoint3d;
+   dc:TDrawContext;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add 3dfaces');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  plt:=GetCurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj := GDBObj3DFace.CreateInstance;
+    istriangle:=random(10)>5;
+    v1:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    for j:=0 to 2 do
+    begin
+         pobj^.PInOCS[j]:=v1;
+         v1:=v1+CreateRandomVertex(100,50,Form1.ChkBox3D.Checked).asVector;
+    end;
+    if istriangle then
+                      pobj^.PInOCS[3]:=pobj^.PInOCS[2]
+                  else
+                      pobj^.PInOCS[3]:=v1;
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    if plt<>nil then
+      pobj^.vp.LineType:=plt;
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+procedure TForm1.BtnProcessObjectsClick(Sender: TObject);
+var
+    pv:pGDBObjEntity;
+    ir:itrec;
+    l,hl:double;
+begin
+  _StartLongProcess(0,'Move objects');
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.beginiterate(ir);
+  if pv<>nil then
+  repeat
+        case pv^.GetObjType of
+        GDBLineID:begin
+                       l:=((PGDBObjLine(pv)^.CoordInWCS.lbegin+PGDBObjLine(pv)^.CoordInWCS.lend.asVector)/10).length;
+                       hl:=l/2;
+                       PGDBObjLine(pv)^.CoordInOCS.lBegin:=PGDBObjLine(pv)^.CoordInOCS.lBegin+CreateRandomVertex(l,hl,Form1.ChkBox3D.Checked).asVector;
+                       PGDBObjLine(pv)^.CoordInOCS.lEnd:=PGDBObjLine(pv)^.CoordInOCS.lEnd+CreateRandomVertex(l,hl,Form1.ChkBox3D.Checked).asVector;
+                       pv^.YouChanged(GetCurrentDrawing^);
+                  end;
+        GDBCircleID:begin
+                       l:=PGDBObjCircle(pv)^.Radius;
+                       hl:=l/2;
+                       PGDBObjCircle(pv)^.Local.P_insert:=PGDBObjCircle(pv)^.Local.P_insert+CreateRandomVertex(l,hl,Form1.ChkBox3D.Checked).asVector;
+                       PGDBObjCircle(pv)^.Radius:=PGDBObjCircle(pv)^.Radius+CreateRandomDouble(l)-hl;
+                       if PGDBObjCircle(pv)^.Radius<=0 then PGDBObjCircle(pv)^.Radius:=CreateRandomDouble(9)+1;
+                       pv^.YouChanged(GetCurrentDrawing^);
+                  end;
+        end;
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.iterate(ir);
+  until pv=nil;
+  _EndLongProcess;
+
+  GetCurrentDrawing^.HardReDraw;
+end;
+
+procedure TForm1.BtnRandomEntityRedrawClick(Sender: TObject);
+var
+  pv:pGDBObjEntity;
+  ir:itrec;
+  l,hl:double;
+begin
+  pv:=pointer(GetCurrentDrawing^.GetCurrentROOT^.ObjArray.getData(random(GetCurrentDrawing^.GetCurrentROOT^.ObjArray.GetCount)));
+  if pv<>nil then begin
+    pv^.vp.Color:=0;
+    GetCurrentDrawing^.wa.param.ForceRedrawVolume.ForceRedraw:=true;
+    GetCurrentDrawing^.wa.param.ForceRedrawVolume.Volume:=pv^.vp.BoundingBox;
+    GetCurrentDrawing^.wa.draworinvalidate;
+  end;
+end;
+
+procedure TForm1.BtnAddCirclesClick(Sender: TObject);
+var
+   i:integer;
+   pobj:PGDBObjCircle;
+   v1:TzePoint3d;
+   dc:TDrawContext;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add circles');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  plt:=GetCurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj := GDBObjCircle.CreateInstance ;
+    v1:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    pobj^.Local.P_insert:=v1;
+    pobj^.Radius:=CreateRandomDouble(9.9)+0.1;
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    if plt<>nil then
+      pobj^.vp.LineType:=plt;
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+
+procedure TForm1.BtnAdd3DpolyLinesClick(Sender: TObject);
+var
+   i,j,vcount:integer;
+   pobj:PGDBObjPolyline;
+   v1:TzePoint3d;
+   dc:TDrawContext;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add 3dpolylines');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  plt:=GetCurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj := GDBObjPolyline.CreateInstance;
+    vcount:=random(8)+2;
+    v1:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    for j:=1 to vcount do
+    begin
+         pobj^.AddVertex(v1);
+         v1:=v1+CreateRandomVertex(100,50,Form1.ChkBox3D.Checked).asVector;
+    end;
+    if vcount>2 then
+                    pobj^.closed:=random(10)>5;
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    if plt<>nil then
+      pobj^.vp.LineType:=plt;
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+
+procedure TForm1.BtnAddArcsClick(Sender: TObject);
+var
+   i:integer;
+   pobj:PGDBObjArc;
+   dc:TDrawContext;
+   plt:PGDBLtypeProp;
+begin
+  _StartLongProcess(0,'Add arcs');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  plt:=GetCurrentDrawing^.LTypeStyleTable.getAddres(lttypename);
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj := GDBObjArc.CreateInstance;
+    pobj^.Local.P_insert:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    pobj^.R:=CreateRandomDouble(10)+0.1;
+    pobj^.StartAngle:=CreateRandomDouble(2*pi);
+    pobj^.EndAngle:=CreateRandomDouble(2*pi);
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    if plt<>nil then
+      pobj^.vp.LineType:=plt;
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+
+
+procedure TForm1.BtnRebuildClick(Sender: TObject);
+var
+   dc:TDrawContext;
+begin
+     _StartLongProcess(0,'Rebuild spatial tree');
+     dc:=GetCurrentDrawing^.CreateDrawingRC;
+     GetCurrentDrawing^.pObjRoot^.calcbb(dc);
+     GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree.maketreefrom(GetCurrentDrawing^.pObjRoot^.ObjArray,GetCurrentDrawing^.pObjRoot^.vp.BoundingBox,nil);
+     //GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree:=createtree(GetCurrentDrawing^.pObjRoot^.ObjArray,GetCurrentDrawing^.pObjRoot^.vp.BoundingBox,@GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree,IninialNodeDepth,nil,TND_Root)^;
+     _EndLongProcess;
+     GetCurrentDrawing^.HardReDraw;
+end;
+
+procedure TForm1.BtnEraseSelClick(Sender: TObject);
+var pv:pGDBObjEntity;
+    ir:itrec;
+    count:integer;
+begin
+  if (GetCurrentDrawing^.GetCurrentROOT^.ObjArray.count = 0)or(GetCurrentDrawing^.wa.param.seldesc.Selectedobjcount=0) then exit;
+  _StartLongProcess(0,'Erase entitys');
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.beginiterate(ir);
+  if pv<>nil then
+  repeat
+    if pv^.Selected then
+                        begin
+                             pv^.YouDeleted(GetCurrentDrawing^);
+                             inc(count);
+                        end;
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.iterate(ir);
+  until pv=nil;
+  GetCurrentDrawing^.wa.param.seldesc.Selectedobjcount:=0;
+  GetCurrentDrawing^.wa.param.seldesc.OnMouseObject:=nil;
+  GetCurrentDrawing^.wa.param.seldesc.LastSelectedObject:=nil;
+  GetCurrentDrawing^.wa.param.lastonmouseobject:=nil;
+  GetCurrentDrawing^.OnMouseObj.Clear;
+  GetCurrentDrawing^.SelObjArray.Free;
+  _EndLongProcess;
+  GetCurrentDrawing^.HardReDraw;
+end;
+procedure TForm1.BtnAddTextsClick(Sender: TObject);
+var
+   i:integer;
+   pobj:PGDBObjText;
+   v1:TzePoint3d;
+   tp:GDBTextStyleProp;
+   angl:double;
+   ts:PGDBTextStyle;
+   dc:TDrawContext;
+begin
+  if GetCurrentDrawing^.TextStyleTable.count=0 then
+  begin
+       tp.size:=2.5;
+       tp.oblique:=0;
+       GetCurrentDrawing^.TextStyleTable.addstyle('standart','txt.shx','',tp,false);
+  end;
+  ts:= GetCurrentDrawing^.TextStyleTable.getAddres('standart');
+  _StartLongProcess(0,'Add texts');
+  dc:=GetCurrentDrawing^.CreateDrawingRC;
+  for i:=1 to SpinEdit1.Value do
+  begin
+    pobj:=GDBObjText.CreateInstance;
+    v1:=CreateRandomVertex(1000,500,Form1.ChkBox3D.Checked);
+    pobj^.Local.P_insert:=v1;
+    pobj^.TXTStyle:=ts;
+    pobj^.Template:='Hello word!';
+    pobj^.textprop.size:=1+random(10);
+    pobj^.textprop.justify:=b2j[1+random(11)];
+    pobj^.textprop.wfactor:=0.3+random*0.7;
+    pobj^.textprop.oblique:=DegToRad(random(30)-15);
+    angl:=pi*random;
+    //pobj^.textprop.angle:=angl;
+    pobj^.local.basis.OX:=VectorTransform3D(PGDBObjText(pobj)^.local.basis.OX,uzegeometry.CreateAffineRotationMatrix(PGDBObjText(pobj)^.Local.basis.oz,-angl));
+    GetCurrentDrawing^.GetCurrentRoot^.AddMi(pobj);
+    SetEntityLayer(pobj,GetCurrentDrawing);
+    pobj^.BuildGeometry(GetCurrentDrawing^);
+    pobj^.formatEntity(GetCurrentDrawing^,dc);
+  end;
+  _EndLongProcess;
+  //FormatEntitysAndRebuildTreeAndRedraw;
+  BtnRebuildClick(self);
+end;
+
+procedure TForm1.BtnOpenDXFClick(Sender: TObject);
+var
+   dc:TDrawContext;
+   zdc:TZDrawingContext;
+begin
+     {$ifdef dxfio}
+     if OpenDialog1.Execute then
+     begin
+          _StartLongProcess(0,'Load dxf file');
+          dc:=GetCurrentDrawing^.CreateDrawingRC;
+          zdc.CreateRec(GetCurrentDrawing^,GetCurrentDrawing^.pObjRoot^,TLOLoad,dc);
+          addfromdxf(OpenDialog1.FileName,zdc);
+          GetCurrentDrawing^.pObjRoot^.FormatEntity(GetCurrentDrawing^,dc);
+          GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree.maketreefrom(GetCurrentDrawing^.pObjRoot^.ObjArray,GetCurrentDrawing^.pObjRoot^.vp.BoundingBox,nil);
+          //GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree:=createtree(GetCurrentDrawing^.pObjRoot^.ObjArray,GetCurrentDrawing^.pObjRoot^.vp.BoundingBox,@GetCurrentDrawing^.pObjRoot^.ObjArray.ObjTree,IninialNodeDepth,nil,TND_Root)^;
+          GetCurrentDrawing^.HardReDraw;
+          _EndLongProcess;
+     end;
+     {$endif}
+end;
+
+procedure TForm1.BtnSaveDXFClick(Sender: TObject);
+begin
+  {$ifdef dxfio}
+  if SaveDialog1.Execute then
+    savedxf20XX(SaveDialog1.FileName,'Y:\zcad\cad\data\templates\minimal.dxf',GetCurrentDrawing^,ZCDxf2000);
+  {$endif}
+end;
+
+procedure TForm1.BtnSelectAllClick(Sender: TObject);
+var //i: Integer;
+    pv:pGDBObjEntity;
+    ir:itrec;
+    count:integer;
+begin
+  if GetCurrentDrawing^.GetCurrentROOT^.ObjArray.Count = 0 then exit;
+  GetCurrentDrawing^.wa.param.SelDesc.Selectedobjcount:=0;
+
+  count:=0;
+  _StartLongProcess(0,'Select all');
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.beginiterate(ir);
+  if pv<>nil then
+  repeat
+    inc(count);
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.iterate(ir);
+  until pv=nil;
+
+
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.beginiterate(ir);
+  if pv<>nil then
+  repeat
+        if count>10000 then
+                           pv^.SelectQuik
+                       else
+                           pv^.select(GetCurrentDrawing^.wa.param.SelDesc.Selectedobjcount,nil);
+
+  pv:=GetCurrentDrawing^.GetCurrentROOT^.ObjArray.iterate(ir);
+  until pv=nil;
+  _EndLongProcess;
+  GetCurrentDrawing^.HardReDraw;
+  //if assigned(updatevisibleproc) then updatevisibleproc;
+
+end;
+
+procedure TForm1. OffEntLayerClick(Sender: TObject);
+begin
+  begin
+       if GetCurrentDrawing^.wa.param.SelDesc.Selectedobjcount=1 then
+       begin
+            if GetCurrentDrawing^.wa.param.SelDesc.LastSelectedObject<>nil then
+            begin
+                 pGDBObjEntity(GetCurrentDrawing^.wa.param.SelDesc.LastSelectedObject)^.vp.Layer^._on:=false;
+                 pGDBObjEntity(GetCurrentDrawing^.wa.param.SelDesc.LastSelectedObject)^.DeSelect(GetCurrentDrawing^.wa.param.SelDesc.Selectedobjcount,nil);
+            end;
+            GetCurrentDrawing^.HardReDraw;
+       end
+       else
+           application.MessageBox('Must be selected one entity','??',ID_OK);
+  end;
+end;
+
+procedure TForm1.OnAllLayerClick(Sender: TObject);
+var
+   ptd:PTSimpleDrawing;
+   ir:itrec;
+   plp:PGDBLayerProp;
+begin
+  ptd:=GetCurrentDrawing;
+  if ptd<>nil then
+  begin
+  plp:=ptd^.LayerTable.beginiterate(ir);
+  if plp<>nil then
+  repeat
+        plp^._on:=true;
+  plp:=ptd^.LayerTable.iterate(ir);
+  until plp=nil;
+  GetCurrentDrawing^.HardReDraw;
+  end;
+end;
+
+
+
+procedure TForm1.TreeChange(Sender: TObject);
+begin
+     sysvarDISPSystmGeometryDraw:=CheckBox1.Checked;
+     GetCurrentDrawing^.HardReDraw;
+end;
+
+procedure TForm1._DestroyApp(Sender: TObject);
+begin
+ pdrawing1^.done;
+ Freemem(pdrawing1);
+ pdrawing2^.done;
+ Freemem(pdrawing2);
+end;
+
+
+end.
+

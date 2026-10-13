@@ -1,0 +1,9 @@
+;Комментарий
+;$(RoCfgs)-путь к программе
+LoadActions($(RoCfgs)/menu/actionscontent.xml)
+LoadActions($(RoCfgs)/menu/electrotechactionscontent.xml)
+LoadToolBars($(RoCfgs)/menu/toolbarscontent.xml)
+LoadToolBars($(RoCfgs)/menu/electrotechtoolbarscontent.xml)
+LoadPalettes($(RoCfgs)/menu/palettescontent.xml)
+LoadMenus($(RoCfgs)/menu/menuscontent.xml)
+LoadMenus($(RoCfgs)/menu/electrotechmenuscontent.xml)

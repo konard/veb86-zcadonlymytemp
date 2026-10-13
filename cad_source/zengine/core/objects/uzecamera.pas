@@ -1,0 +1,146 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+
+unit uzecamera;
+{$Mode delphi}{$H+}
+{$INCLUDE zengineconfig.inc}
+
+interface
+uses
+  uzbLogIntf,uzegeometrytypes,uzeTypes,uzegeometry;
+
+type
+  GDBProjectProc=procedure (objcoord:TzePoint3d; out wincoord:TzePoint3d) of object;
+
+  GDBCameraBaseProp=record
+    point:TzePoint3d;
+    look:TzeVector3d;
+    ydir:TzeVector3d;
+    xdir:TzeVector3d;
+    zoom:double;
+  end;
+
+  GDBBaseCamera=object(GDBaseObject)
+    modelMatrix:TzeTypedMatrix4d;
+    fovy:double;
+    Counters:TCameraCounters;
+    prop:GDBCameraBaseProp;
+    anglx,angly,zmin,zmax:double;
+    projMatrix:TzeTypedMatrix4d;
+    viewport:TzeVector4i;
+    clip:TzeTypedMatrix4d;
+    frustum:TzeFrustum;
+    obj_zmax,obj_zmin:double;
+    DRAWNOTEND:boolean;
+    DRAWCOUNT:TActuality;
+    POSCOUNT:TActuality;
+    VISCOUNT:TActuality;
+    CamCSOffset:TzeVector3d;
+    procedure NextPosition;virtual;abstract;
+  end;
+  PGDBBaseCamera=^GDBBaseCamera;
+
+  GDBObjCamera= object(GDBBaseCamera)
+    modelMatrixLCS:TzeTypedMatrix4d;
+    zminLCS,zmaxLCS:Double;
+    frustumLCS:TzeFrustum;
+    clipLCS:TzeTypedMatrix4d;
+    projMatrixLCS:TzeTypedMatrix4d;
+    notuseLCS:Boolean;
+    procedure getfrustum(mm,pm:PzeTypedMatrix4d;var _clip:TzeTypedMatrix4d;var _frustum:TzeFrustum);
+    procedure RotateInLocalCSXY(ux,uy:Double);
+    procedure MoveInLocalCSXY(oldx,oldy:Double;ax:TzeVector3d);
+    function GetObjTypeName:String;virtual;
+    constructor initnul;
+
+    procedure NextPosition;virtual;
+  end;
+  PGDBObjCamera=^GDBObjCamera;
+
+implementation
+
+procedure GDBObjCamera.NextPosition;
+begin
+  POSCOUNT:=zeHandles.CreateHandle;
+  //VISCOUNT:=zeHandles.CreateHandle;
+end;
+constructor GDBObjCamera.initnul;
+begin
+  POSCOUNT:=zeHandles.CreateHandle;
+  VISCOUNT:=zeHandles.CreateHandle;
+end;
+function GDBObjCamera.GetObjTypeName;
+begin
+  result:='GDBObjCamera';
+end;
+procedure GDBObjCamera.getfrustum;
+begin
+  _clip:=MatrixMultiply(mm^,pm^);
+  _frustum:=calcfrustum(@_clip);
+end;
+procedure GDBObjCamera.RotateInLocalCSXY(ux,uy:Double);
+var
+  tempmatr,rotmatr:TzeTypedMatrix4d;
+begin
+  tempmatr:=CreateMatrixFromBasis(prop.xdir,prop.ydir,prop.look);
+  rotmatr:=MatrixMultiply(CreateRotationMatrixY(uy),CreateRotationMatrixX(ux));
+  tempmatr:=MatrixMultiply(rotmatr,tempmatr);
+
+  prop.xdir:=tempmatr.mtr.v[0].Slice;
+  prop.ydir:=tempmatr.mtr.v[1].Slice;
+  prop.look:=tempmatr.mtr.v[2].Slice;
+
+  prop.look.Normalize;//:=NormalizeVertex(prop.look);
+  prop.xdir := VectorDot(prop.ydir,prop.look);
+  prop.xdir.Normalize;//:=NormalizeVertex(prop.xdir);
+  prop.ydir := VectorDot(prop.look,prop.xdir);
+end;
+procedure GDBObjCamera.MoveInLocalCSXY(oldx,oldy:Double;ax:TzeVector3d);
+var
+  tempmatr,rotmatr:TzeTypedMatrix4d;
+  tv,tv2:TzeVector4d;
+  len,d:Double;
+begin
+  rotmatr:=CreateMatrixFromBasis(prop.xdir,prop.ydir,prop.look);
+
+  tv2.x:=-oldx;
+  tv2.y:=-oldy;
+  tv2.z:=0;
+  tv2.w:=1;
+
+  len:={onevertexlength}(ax.Length);
+  d:=sqrt(tv2.x*tv2.x+tv2.y*tv2.y+tv2.z*tv2.z);
+  if d>eps then begin
+  len:=len/d;
+  if (abs(ax.x)>eps)or(abs(ax.y)>eps) then begin
+    tv2.x:=tv2.x*len;
+    tv2.y:=tv2.y*len;
+    tv:=tv2;
+    tempmatr:=rotmatr;
+    tv:=vectortransform(tv,tempmatr);
+    tv.x:=tv.x;
+    rotmatr.mtr.v[3].Slice:=prop.point.asVector;
+    tempmatr:=CreateTranslationMatrix(tv.Slice);
+    tempmatr:=MatrixMultiply(rotmatr,tempmatr);
+    prop.point:=tempmatr.mtr.v[3].Slice.asPoint3d;
+  end;
+  end else
+    zDebugln('GDBObjCamera.MoveInLocalCSXY:'+rsDivByZero);
+end;
+begin
+end.

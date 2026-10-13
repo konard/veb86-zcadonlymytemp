@@ -1,0 +1,617 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+
+unit uzsbVarmanDef;
+{$MODESWITCH ADVANCEDRECORDS}
+
+interface
+uses
+  SysUtils,StrUtils,Classes,Types,TypInfo,
+  Controls,Graphics,StdCtrls,
+  uzbUnits,uzbLogIntf,
+  gzctnrVectorTypes,uzctnrTree,gzctnrSTL,uzctnrvectorstrings,
+  uzctnrVectorBytesStream;
+const
+  dynamicoffset=-1;
+  invar='_INVAR_';
+type
+  TVarAttr=(vda_different,//вместо значения отображается строка "Different"
+    vda_RO,               //нельзя отредактировать
+    vda_approximately,    //приближенное значение (текстовое не совпадает с двоичным)
+    vda_colored1);        //альтернативное оформление, чтоб поле бросалось в глаза
+  TVarAttrs=set of TVarAttr;
+
+  TTypeAttr=(TA_COMPOUND,
+    TA_OBJECT,
+    TA_ENUM);
+  TTypeAttrs=set of TTypeAttr;
+
+  TFieldAttr=(fldaHidden,//скрыто на постоянной основе
+    fldaTmpHidden,       //временно скрыто, например изза какогото особого значения
+    fldaReadOnly,        //нельзя отредактировать
+    fldaDifferent,       //вместо значения отображается строка "Different"
+    fldaApproximately,   //приближенное значение (текстовое не совпадает с двоичным)
+    fldaColored1);       //альтернативное оформление, чтоб поле бросалось в глаза
+  TFieldAttrs=set of TFieldAttr;
+
+  TInternalScriptString=AnsiString;
+  TCompareResult=(CRLess,CREqual,CRGreater,CRNotEqual);
+  PDMode=(PDM_Field,PDM_Property);
+  TEditorMode=(EM_Inplace,EM_Nothing);
+
+  TPropEditor=class;
+  TEditorDesc=record
+    Editor:TPropEditor;
+    Mode:TEditorMode;
+  end;
+
+  PUserTypeDescriptor=^UserTypeDescriptor;
+  TPropEditorOwner=TWinControl;
+
+  TDecoratorCreateEditor=function(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;
+    psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;PTD:PUserTypeDescriptor;f:TzeUnitsFormat):TEditorDesc;
+  TDecoratorGetValueAsString=function(PInstance:Pointer):string;
+  TDecoratorDrawProperty=procedure(canvas:TCanvas;ARect:TRect;PInstance:Pointer);
+  TFastEditorState=(TFES_Default,TFES_Hot,TFES_Pressed);
+  TGetPrefferedFastEditorSize=function(PInstance:Pointer;ARect:TRect):TSize;
+  TDrawFastEditor=procedure(canvas:TCanvas;r:trect;PInstance:Pointer;state:TFastEditorState;boundr:trect);
+  TRunFastEditor=procedure(PInstance:Pointer);
+
+  TDecoratedProcs=record
+    OnGetValueAsString:TDecoratorGetValueAsString;
+    OnCreateEditor:TDecoratorCreateEditor;
+    OnDrawProperty:TDecoratorDrawProperty;
+  end;
+
+  TFastEditorProcs=record
+    OnGetPrefferedFastEditorSize:TGetPrefferedFastEditorSize;
+    OnDrawFastEditor:TDrawFastEditor;
+    OnRunFastEditor:TRunFastEditor;
+    UndoInsideFastEditor:boolean;
+  end;
+
+  TFastEditorRunTimeData=record
+    Procs:TFastEditorProcs;
+    FastEditorState:TFastEditorState;
+    FastEditorDrawed:boolean;
+    FastEditorRect:trect;
+  end;
+
+  TFastEditorsVector=specialize TMyVector<TFastEditorProcs>;
+  TFastEditorsRunTimeVector=specialize TMyVector<TFastEditorRunTimeData>;
+
+  BasePropertyDeskriptor=object(GDBBaseNode)
+    Name:string;
+    Value: String;
+    ValKey: String;
+    ValType: String;
+    Category: String;
+    PTypeManager:PUserTypeDescriptor;
+    Attr:TFieldAttrs;
+    Collapsed:PBoolean;
+    ValueOffsetInMem:Word;
+    valueAddres:Pointer;
+    rect:trect;
+    _ppda:Pointer;
+    _bmode:Integer;
+    mode:PDMode;
+    Decorators:TDecoratedProcs;
+    FastEditors:TFastEditorsRunTimeVector;
+    procedure free;virtual;
+  end;
+  PBasePropertyDeskriptor=^BasePropertyDeskriptor;
+
+  TOIProps=record
+    ci,barpos:integer;
+  end;
+
+  TMyNotifyCommand=(TMNC_EditingDoneEnterKey,TMNC_EditingDoneLostFocus,TMNC_EditingDoneESC,TMNC_EditingProcess,TMNC_RunFastEditor,TMNC_EditingDoneDoNothing);
+  TMyNotifyProc=procedure(Sender:TObject;Command:TMyNotifyCommand) of object;
+  TCreateEditorFunc=function(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;
+    const InitialValue:string;ptdesc:PUserTypeDescriptor;preferedHeight:integer;f:TzeUnitsFormat):TEditorDesc of object;
+  TonGetValueAsString=function(pinstance:Pointer):TInternalScriptString of object;
+  TonGetEditableAsString=function(pinstance:Pointer;const f:TzeUnitsFormat):TInternalScriptString of object;
+  TonSetEditableFromString=procedure(PInstance:Pointer;const f:TzeUnitsFormat;const Value:TInternalScriptString) of object;
+
+  UserTypeDescriptor=object
+    SizeInBytes:integer;
+    TypeName:string;
+    PUnit:Pointer;
+    OIP:TOIProps;
+    Collapsed:boolean;
+    Decorators:TDecoratedProcs;
+    //FastEditor:TFastEditorProcs;
+    FastEditors:TFastEditorsVector;
+    onCreateEditorFunc:TCreateEditorFunc;
+    onGetValueAsString:TonGetValueAsString;
+    onGetEditableAsString:TonGetEditableAsString;
+    onSetEditableFromString:TonSetEditableFromString;
+    pSuperTypeDeskriptor:PUserTypeDescriptor;
+    constructor init(size:integer;tname:string;pu:pointer);
+    constructor baseinit(size:integer;tname:string;pu:pointer);
+    procedure _init(size:integer;tname:string;pu:pointer);
+    function CreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean;
+      const InitialValue:TInternalScriptString;preferedHeight:integer;f:TzeUnitsFormat):TEditorDesc;virtual;
+    procedure ApplyOperator(const oper,path:TInternalScriptString;var offset:integer;out tc:PUserTypeDescriptor);virtual;abstract;
+    function SerializePreProcess(const Value:TInternalScriptString;sub:integer):TInternalScriptString;virtual;
+    function GetTypeAttributes:TTypeAttrs;virtual;
+    function GetEditableAsString(PInstance:Pointer;const f:TzeUnitsFormat):TInternalScriptString;virtual;
+    function GetValueAsString(pinstance:Pointer):TInternalScriptString;virtual;
+    function GetFormattedValueAsString(PInstance:Pointer;const f:TzeUnitsFormat):TInternalScriptString;virtual;
+    procedure SetFormattedValueFromString(PInstance:Pointer;const f:TzeUnitsFormat;const Value:TInternalScriptString);virtual;
+    function GetUserValueAsString(pinstance:Pointer):TInternalScriptString;virtual;
+    function GetDecoratedValueAsString(pinstance:Pointer;const f:TzeUnitsFormat):TInternalScriptString;virtual;
+    procedure CopyValueToInstance(PValue,PInstance:pointer);virtual;
+    procedure CopyInstanceToValue(PInstance,PValue:pointer);virtual;
+    function Compare(pleft,pright:pointer):TCompareResult;virtual;
+    procedure SetEditableFromString(PInstance:Pointer;const f:TzeUnitsFormat;const Value:TInternalScriptString);virtual;
+    procedure SetValueFromString(PInstance:Pointer;const _Value:TInternalScriptString);virtual;abstract;
+    procedure SetValueFromPValue(const APInstance:Pointer;const APValue:Pointer);virtual;
+    procedure InitInstance(PInstance:Pointer);virtual;
+    function AllocInstance:Pointer;virtual;
+    function AllocAndInitInstance:Pointer;virtual;
+    destructor Done;virtual;
+    procedure MagicFreeInstance(PInstance:Pointer);virtual;
+    procedure MagicAfterCopyInstance(PInstance:Pointer);virtual;
+    procedure SavePasToMem(var membuf:TZctnrVectorBytes;PInstance:Pointer;const prefix:TInternalScriptString);virtual;
+    procedure IncAddr(var addr:Pointer);virtual;
+    function GetFactTypedef:PUserTypeDescriptor;virtual;
+    function GetDescribedTypedef:PUserTypeDescriptor;virtual;
+    function GetSuperOrSelfTypedef:PUserTypeDescriptor;virtual;
+    function GetParentTypedef:PUserTypeDescriptor;virtual;
+    procedure Format;virtual;
+    procedure RegisterTypeinfo(ti:PTypeInfo);virtual;
+  end;
+
+  TPropEditor=class(TComponent)
+  public
+    PInstance:Pointer;
+    PTD:PUserTypeDescriptor;
+    OwnerNotify:TMyNotifyProc;
+    fFreeOnLostFocus:boolean;
+    byObjects:boolean;
+    CanRunFastEditor:boolean;
+    RunFastEditorValue:TObject;
+    changed:boolean;
+    f:TzeUnitsFormat;
+    constructor Create(AOwner:TComponent;_PInstance:Pointer;var _PTD:UserTypeDescriptor;FreeOnLostFocus:boolean;_f:TzeUnitsFormat);
+    destructor Destroy;override;
+    procedure EditingDone(Sender:TObject);//Better name ..LostFocus..
+    procedure EditingDone2(Sender:TObject);
+    procedure StoreData(Sender:TObject);
+    procedure EditingProcess(Sender:TObject);
+    procedure ExitEdit(Sender:TObject);
+    procedure keyPress(Sender:TObject;var Key:char);
+    function geteditor:TWinControl;
+    procedure SetEditorBounds(pd:PBasePropertyDeskriptor;OnlyHotFasteditors:boolean);
+  end;
+
+  TTranslateFunction=function(const Identifier,OriginalValue:string):string;
+
+  THardTypedData=record
+    Instance:Pointer;
+    case boolean of
+      False:(P:Pointer);
+      True:(PTD:PUserTypeDescriptor);
+  end;
+  PTHardTypedData=^THardTypedData;
+
+  TTypedData=record
+    Addr:TInVectorAddr;
+    case boolean of
+      False:(P:Pointer);
+      True:(PTD:PUserTypeDescriptor);
+  end;
+  PTTypedData=^TTypedData;
+
+  vardesk=record
+    Name:TInternalScriptString;
+    username:TInternalScriptString;
+    Data:TTypedData;
+    attrib:TVarAttrs;
+    function GetValueAsString:TInternalScriptString;
+    procedure SetValueFromString(const AValue:TInternalScriptString);
+    procedure SetInstance(DS:PZAbsVector;Offs:PtrUInt);overload;
+    procedure SetInstance(Ptr:Pointer);overload;
+    procedure FreeeInstance;
+  end;
+  pvardesk=^vardesk;
+
+procedure convertToRunTime(dt:TFastEditorsVector;var rt:TFastEditorsRunTimeVector);
+
+implementation
+
+function vardesk.GetValueAsString:TInternalScriptString;
+begin
+  result:='';
+  if @self<>nil then
+    if data.PTD<>nil then
+      result:=data.PTD^.GetValueAsString(data.Addr.Instance);
+end;
+procedure vardesk.SetValueFromString(const AValue:TInternalScriptString);
+begin
+  if @self<>nil then
+    if data.PTD<>nil then
+      data.PTD^.SetValueFromString(data.Addr.Instance,AValue);
+end;
+procedure vardesk.SetInstance(DS:PZAbsVector;Offs:PtrUInt);
+begin
+  data.Addr.SetInstance(DS,Offs);
+end;
+procedure vardesk.SetInstance(Ptr:Pointer);
+begin
+  data.Addr.SetInstance(Ptr);
+end;
+procedure vardesk.FreeeInstance;
+begin
+  data.Addr.FreeeInstance
+end;
+
+procedure BasePropertyDeskriptor.free;
+begin
+   inherited;
+   freeandnil(FastEditors);
+end;
+procedure convertToRunTime(dt:TFastEditorsVector;var rt:TFastEditorsRunTimeVector);
+var
+  i:integer;
+  td:TFastEditorRunTimeData;
+begin
+  if (assigned(dt))and(dt.size>0)then
+  begin
+    if not assigned(rt) then
+                        begin
+                            rt:=TFastEditorsRunTimeVector.Create;
+                            rt.Reserve(dt.size);
+                            for i:=0 to dt.size-1 do
+                              begin
+                                td.Procs:=dt[i];
+                                rt.PushBack(td);
+                                //result.Mutable[i]^.Procs:=dt[i];
+                              end;
+                        end
+                        else
+                        begin
+                            for i:=0 to dt.size-1 do
+                              begin
+                                rt.Mutable[i]^.Procs:=dt[i];
+                              end;
+                        end
+
+  end
+  else
+   begin
+     if assigned(rt) then
+                         rt.destroy;
+     rt:=nil;
+   end;
+end;
+
+constructor TPropEditor.Create(AOwner:TComponent;_PInstance:Pointer;var _PTD:UserTypeDescriptor;FreeOnLostFocus:boolean;_f:TzeUnitsFormat);
+begin
+     inherited create(AOwner);
+     PInstance:=_PInstance;
+     PTD:=@_PTD;
+     fFreeOnLostFocus:=FreeOnLostFocus;
+     byObjects:=false;
+     CanRunFastEditor:=false;
+     RunFastEditorValue:=nil;
+     changed:=false;
+     f:=_f;
+end;
+function TPropEditor.geteditor:TWinControl;
+begin
+     tobject(result):=(self.Components[0]);
+end;
+procedure TPropEditor.SetEditorBounds(pd:PBasePropertyDeskriptor;OnlyHotFasteditors:boolean);
+var
+  editorcontrol:TWinControl;
+  r:trect;
+  i:integer;
+begin
+     if pd<>nil then begin
+       editorcontrol:=geteditor;
+       r:=pd^.rect;
+       if not OnlyHotFasteditors then
+         if assigned(pd^.FastEditors) then
+           for i:=0 to pd^.FastEditors.Size-1 do
+             if pd^.FastEditors[i].FastEditorDrawed then
+               if pd^.FastEditors[i].FastEditorRect.Left<r.Right then
+                 r.Right:=pd^.FastEditors[i].FastEditorRect.Left;
+       editorcontrol.SetBounds(r.Left+2,r.Top,r.Right-r.Left-2,r.Bottom-r.Top);
+     end;
+end;
+destructor TPropEditor.Destroy;
+begin
+     tobject(self.Components[0]).destroy;
+     inherited;
+end;
+procedure TPropEditor.keyPress(Sender: TObject; var Key: char);
+begin
+     if key=#13 then
+                    if assigned(OwnerNotify) then
+                                                 begin
+                                                      ptd^.SetEditableFromString(PInstance,f,tedit(sender).text);
+                                                      OwnerNotify(self,TMNC_EditingDoneEnterKey);
+                                                 end;
+end;
+procedure TPropEditor.StoreData(Sender: TObject);
+var
+  i:integer;
+  p:pointer;
+begin
+     if changed then
+     begin
+     if byobjects then
+                      begin
+                           i:=tcombobox(sender).ItemIndex;
+                           p:=tcombobox(sender).Items.Objects[i];
+                           ptd^.CopyValueToInstance(@p,PInstance)
+                      end
+                  else
+                      ptd^.SetEditableFromString(PInstance,f,tedit(sender).text);
+     end;
+end;
+procedure TPropEditor.EditingDone(Sender: TObject);
+begin
+     StoreData(sender);
+     if assigned(OwnerNotify) then
+                                  OwnerNotify(self,TMNC_EditingDoneLostFocus);
+end;
+procedure TPropEditor.EditingDone2(Sender: TObject);
+begin
+     StoreData(sender);
+     tedit(sender).OnExit:=nil;
+     if assigned(OwnerNotify) then
+                                  OwnerNotify(self,TMNC_EditingDoneDoNothing);
+end;
+procedure TPropEditor.EditingProcess(Sender: TObject);
+var
+  i:integer;
+  p:pointer;
+  rfs:boolean;
+  selectableeditor:boolean;
+begin
+     changed:=true;
+     selectableeditor:=false;
+     if self.geteditor is TCombobox then
+     if TCombobox(self.geteditor).Style in [csDropDownList,csOwnerDrawFixed,csOwnerDrawVariable]  then
+       selectableeditor:=true;
+     if (not fFreeOnLostFocus)or(selectableeditor) then
+     begin
+     rfs:=false;
+     if assigned(OwnerNotify) then
+                                  begin
+                                       if byobjects then
+                                                        begin
+                                                             i:=tcombobox(sender).ItemIndex;
+                                                             p:=tcombobox(sender).Items.Objects[i];
+                                                             if CanRunFastEditor then
+                                                             if pointer(RunFastEditorValue)=p then
+                                                                                         rfs:=true;
+                                                             if not rfs then
+                                                                            ptd^.CopyValueToInstance(@p,PInstance);
+                                                        end
+                                                    else
+                                                        ptd^.SetValueFromString(PInstance,tedit(sender).text);
+                                        if rfs then
+                                                   OwnerNotify(self,TMNC_RunFastEditor)
+                                               else
+                                                   begin
+                                                     if selectableeditor then
+                                                      OwnerNotify(self,{TMNC_EditingDoneDoNothing}TMNC_EditingProcess)
+                                                     else
+                                                      OwnerNotify(self,TMNC_EditingProcess);
+                                                   end;
+                                  end;
+     end
+end;
+procedure TPropEditor.ExitEdit(Sender: TObject);
+var
+   peditor:tobject;
+begin
+     if fFreeOnLostFocus then
+                             begin
+                                  peditor:=self.geteditor;
+                                  if peditor<>nil then
+                                                      EditingDone(peditor);
+                             end;
+end;
+procedure UserTypeDescriptor.IncAddr(var addr:Pointer);
+begin
+     inc(pByte(addr),SizeInBytes);
+end;
+function UserTypeDescriptor.GetFactTypedef:PUserTypeDescriptor;
+begin
+  if pSuperTypeDeskriptor=nil then
+    result:=@self
+  else
+    Result:=pSuperTypeDeskriptor^.GetDescribedTypedef;
+end;
+function UserTypeDescriptor.GetDescribedTypedef:PUserTypeDescriptor;
+begin
+  result:=nil;
+end;
+function UserTypeDescriptor.GetSuperOrSelfTypedef:PUserTypeDescriptor;
+begin
+  if pSuperTypeDeskriptor<>nil then
+    result:=pSuperTypeDeskriptor
+  else
+    result:=@self;
+end;
+function UserTypeDescriptor.GetParentTypedef:PUserTypeDescriptor;
+begin
+  result:=nil;
+end;
+
+procedure UserTypeDescriptor.Format;
+begin
+end;
+procedure UserTypeDescriptor.RegisterTypeinfo(ti:PTypeInfo);
+begin
+end;
+procedure UserTypeDescriptor.SavePasToMem(var membuf:TZctnrVectorBytes;PInstance:Pointer;const prefix:TInternalScriptString);
+begin
+  if (pSuperTypeDeskriptor<>nil)and(pSuperTypeDeskriptor<>@self) then
+    pSuperTypeDeskriptor^.SavePasToMem(membuf,PInstance,prefix)
+  else
+    membuf.TXTAddStringEOL(prefix+':='+GetValueAsString(PInstance)+';');
+end;
+procedure UserTypeDescriptor.MagicFreeInstance(PInstance:Pointer);
+begin
+end;
+procedure UserTypeDescriptor.MagicAfterCopyInstance(PInstance:Pointer);
+begin
+
+end;
+procedure UserTypeDescriptor.InitInstance(PInstance:Pointer);
+begin
+     fillchar(pinstance^,SizeInBytes,0)
+end;
+procedure UserTypeDescriptor.SetValueFromPValue(const APInstance:Pointer;const APValue:Pointer);
+begin
+  if pSuperTypeDeskriptor<>nil then
+    pSuperTypeDeskriptor^.SetValueFromPValue(APInstance,APValue)
+  else
+    raise Exception.Create('UserTypeDescriptor.SetValue error');
+end;
+
+function UserTypeDescriptor.AllocInstance:Pointer;
+begin
+  Getmem(result,SizeInBytes);
+end;
+function UserTypeDescriptor.AllocAndInitInstance:Pointer;
+begin
+  result:=AllocInstance;
+  InitInstance(result);
+end;
+
+procedure UserTypeDescriptor.CopyValueToInstance(PValue,PInstance:pointer);
+begin
+     Move(PValue^, PInstance^,SizeInBytes);
+     MagicAfterCopyInstance(PInstance);
+end;
+procedure UserTypeDescriptor.CopyInstanceToValue(PInstance,PValue:pointer);
+begin
+  Move(PInstance^, PValue^,SizeInBytes);
+  MagicAfterCopyInstance(PValue);
+end;
+
+function UserTypeDescriptor.Compare(pleft,pright:pointer):TCompareResult;
+begin
+     if CompareByte(pleft^,pright^,SizeInBytes)=0 then
+                                                         result:=CREqual
+                                                     else
+                                                         result:=CRNotEqual;
+end;
+
+function UserTypeDescriptor.SerializePreProcess(const Value:TInternalScriptString;sub:integer):TInternalScriptString;
+begin
+     result:=DupeString(' ',sub)+value;
+end;
+procedure UserTypeDescriptor._init(size:Integer;tname:string;pu:pointer);
+begin
+     SizeInBytes:=size;
+     pointer(typename):=nil;
+     typename:=tname;
+     PUnit:=pu;
+     oip.ci:=0;
+     oip.barpos:=0;
+     collapsed:=true;
+     onCreateEditorFunc:=nil;
+end;
+
+constructor UserTypeDescriptor.init(size:Integer;tname:string;pu:pointer);
+begin
+     baseinit(size,tname,pu);
+end;
+constructor UserTypeDescriptor.baseinit(size:Integer;tname:string;pu:pointer);
+begin
+     _init(size,tname,pu);
+     Decorators.OnGetValueAsString:=nil;
+     FastEditors:=nil;
+     onGetValueAsString:=nil;
+     onGetEditableAsString:=nil;
+     onSetEditableFromString:=nil;
+     pSuperTypeDeskriptor:=nil;
+end;
+
+destructor UserTypeDescriptor.done;
+begin
+     zTraceLn('{T}[FINALIZATION_TYPES]%s',[self.TypeName]);
+     //programlog.LogOutStr(self.TypeName,lp_OldPos,LM_Trace);
+     SizeInBytes:=0;
+     typename:='';
+     if FastEditors<>nil then
+                             FastEditors.Destroy;
+end;
+function UserTypeDescriptor.CreateEditor(TheOwner:TPropEditorOwner;rect:trect;pinstance:pointer;psa:PTZctnrVectorStrings;FreeOnLostFocus:boolean; const InitialValue:TInternalScriptString;preferedHeight:integer;f:TzeUnitsFormat):TEditorDesc;
+begin
+     if assigned(onCreateEditorFunc) then
+                                         result:=onCreateEditorFunc(TheOwner,rect,pinstance,psa,FreeOnLostFocus,initialvalue,@self,preferedHeight,f)
+                                     else
+                                         begin
+                                           result.editor:=nil;
+                                           result.mode:=EM_Nothing;
+                                         end;
+end;
+function UserTypeDescriptor.GetTypeAttributes:TTypeAttrs;
+begin
+     result:=[];
+end;
+function UserTypeDescriptor.GetValueAsString(pinstance:Pointer):TInternalScriptString;
+begin
+     result:='UserTypeDescriptor.GetValueAsString;';
+end;
+function UserTypeDescriptor.GetEditableAsString(PInstance:Pointer; const f:TzeUnitsFormat):TInternalScriptString;
+begin
+  if assigned(onGetEditableAsString)then
+    exit(onGetEditableAsString(pinstance,f));
+  result:=GetFormattedValueAsString(pinstance,f);
+end;
+procedure UserTypeDescriptor.SetEditableFromString(PInstance:Pointer;const f:TzeUnitsFormat; const Value:TInternalScriptString);
+begin
+  if assigned(onSetEditableFromString)then
+    onSetEditableFromString(PInstance,f,Value)
+  else
+    SetFormattedValueFromString(PInstance,f,Value);
+end;
+
+function UserTypeDescriptor.GetFormattedValueAsString(pinstance:Pointer; const f:TzeUnitsFormat):TInternalScriptString;
+begin
+     result:=GetValueAsString(PInstance);
+end;
+procedure UserTypeDescriptor.SetFormattedValueFromString(PInstance:Pointer;const f:TzeUnitsFormat; const Value:TInternalScriptString);
+begin
+     SetValueFromString(PInstance,Value);
+end;
+function UserTypeDescriptor.GetUserValueAsString(pinstance:Pointer):TInternalScriptString;
+begin
+     result:=GetValueAsString(pinstance);
+end;
+function UserTypeDescriptor.GetDecoratedValueAsString(pinstance:Pointer; const f:TzeUnitsFormat):TInternalScriptString;
+begin
+     if assigned(Decorators.OnGetValueAsString) then
+                                         result:=Decorators.OnGetValueAsString(pinstance)
+                                     else
+                                         result:=GetFormattedValueAsString(pinstance,f);
+end;
+begin
+  DecimalSeparator := '.';
+end.
+

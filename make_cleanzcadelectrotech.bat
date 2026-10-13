@@ -1,0 +1,1 @@
+make cleanzcadelectrotech LP=C:\fpclaz\lazarus PCP=C:\fpclaz\cfgforlaz

@@ -1,0 +1,61 @@
+object SingleLineTextEditorForm: TSingleLineTextEditorForm
+  Left = 384
+  Height = 60
+  Top = 224
+  Width = 795
+  AutoSize = True
+  BorderIcons = [biSystemMenu]
+  Caption = 'Text editor'
+  ClientHeight = 60
+  ClientWidth = 795
+  DesignTimePPI = 144
+  KeyPreview = True
+  OnKeyDown = _onKeyDown
+  OnMouseWheel = _onMouseWheel
+  OnShow = _onShow
+  LCLVersion = '2.3.0.0'
+  object EditField: TEdit
+    Left = -30
+    Height = 40
+    Top = 0
+    Width = 450
+    Align = alClient
+    AutoSize = False
+    Constraints.MinWidth = 450
+    TabOrder = 0
+  end
+  object helptext: TLabel
+    Left = 0
+    Height = 40
+    Top = 0
+    Width = 25
+    Align = alLeft
+    Caption = 'Text'
+    Layout = tlCenter
+    ParentColor = False
+  end
+  object OkButton: TButton
+    Left = 420
+    Height = 40
+    Top = 0
+    Width = 44
+    Align = alRight
+    AutoSize = True
+    Caption = 'Ok'
+    Default = True
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object CancelButton: TButton
+    Left = 464
+    Height = 40
+    Top = 0
+    Width = 66
+    Align = alRight
+    AutoSize = True
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+end

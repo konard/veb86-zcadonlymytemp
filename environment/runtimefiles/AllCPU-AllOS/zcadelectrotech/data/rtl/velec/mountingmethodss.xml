@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <STRINGTREE>
+    <hidden Desc="Скрытая">
+      <inPipeMetal Desc="В металлической трубе"/>
+      <underPlaster Desc="под штукатуркой"/>
+    </hidden>
+    <open Desc="Открытая">
+      <inMetalTray Desc="В металлическом лотке"/>
+      <inCableChannel Desc="В кабельном канале"/>
+      <inPipePVC Desc="В ПВХ трубе"/>
+      <inPipеMetal Desc="В металлической трубе"/>
+    </open>
+    <land Desc="Наружные сети электроснабжения">
+      <lowCable Desc="КЛ-0,4 (-N-)"/>
+      <highCable  Desc="КЛ-6/10 кВ (-W-)"/>
+      <OutLight Desc="Наружное освещение (-V-)"/>
+      <inPipeFutlyr Desc="Кабель в защитной трубе"/>
+      <lowWire Desc="ВЛ-0,4 (->-<-)"/>
+      <highWire  Desc="ВЛ-6/10 кВ (->>-<<-)"/>
+    </land>
+  </STRINGTREE>
+</CONFIG>

@@ -1,0 +1,40 @@
+object LineWeightSelectForm: TLineWeightSelectForm
+  Left = 653
+  Height = 491
+  Top = 218
+  Width = 196
+  Caption = 'Lineweight'
+  ClientHeight = 491
+  ClientWidth = 196
+  OnCreate = _oncreate
+  LCLVersion = '1.7'
+  Visible = False
+  object ButtonPanel1: TButtonPanel
+    Left = 6
+    Height = 37
+    Top = 448
+    Width = 184
+    OKButton.Name = 'OKButton'
+    OKButton.DefaultCaption = True
+    HelpButton.Name = 'HelpButton'
+    HelpButton.DefaultCaption = True
+    CloseButton.Name = 'CloseButton'
+    CloseButton.DefaultCaption = True
+    CancelButton.Name = 'CancelButton'
+    CancelButton.DefaultCaption = True
+    TabOrder = 0
+    ShowButtons = [pbOK, pbCancel]
+  end
+  object ListBox1: TListBox
+    Left = 0
+    Height = 442
+    Top = 0
+    Width = 196
+    Align = alClient
+    ItemHeight = 0
+    OnDrawItem = _onDrawItem
+    OnSelectionChange = _onSelChg
+    Style = lbOwnerDrawFixed
+    TabOrder = 1
+  end
+end

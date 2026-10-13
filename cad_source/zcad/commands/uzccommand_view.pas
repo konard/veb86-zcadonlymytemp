@@ -1,0 +1,134 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>)
+}
+{$mode delphi}
+unit uzccommand_view;
+
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  uzcLog,
+  SysUtils,
+  uzegeometrytypes,uzegeometry,
+  uzccommandsabstract,uzccommandsimpl,
+  uzcdrawings;
+
+implementation
+
+function view_com(const Context:TZCADCommandContext;
+  operands:TCommandOperands):TCommandResult;
+var
+  s:string;
+  ox,oy,oz:TzeVector3d;
+  m:TzeTypedMatrix4d;
+  recognized:boolean;
+begin
+  s:=uppercase(operands);
+  ox:=cV3d_m1__0__0;
+  oy:=cV3d__0__1__0;
+  oz:=uzegeometry.VectorDot(ox,oy);
+  recognized:=True;
+  if s='TOP' then begin
+    //drawings.GetCurrentDWG.OGLwindow1.RotTo(createvertex(-1,0,0),createvertex(0,1,0),createvertex(0,0,-1))
+    ox:=cV3d_m1__0__0;
+    oy:=cV3d__0__1__0;
+  end else if s='BOTTOM' then begin
+    //drawings.GetCurrentDWG.OGLwindow1.RotTo(createvertex(1,0,0),createvertex(0,1,0),createvertex(0,0,1))
+    ox:=cV3d__1__0__0;
+    oy:=cV3d__0__1__0;
+  end else if s='LEFT' then begin
+    //drawings.GetCurrentDWG.OGLwindow1.RotTo(createvertex(0,0,-1),createvertex(0,1,0),createvertex(1,0,0))
+    ox:=cV3d__0__0_m1;
+    oy:=cV3d__0__1__0;
+  end else if s='RIGHT' then begin
+    //drawings.GetCurrentDWG.OGLwindow1.RotTo(createvertex(0,0,1),createvertex(0,1,0),createvertex(-1,0,0))
+    ox:=cV3d__0__0__1;
+    oy:=cV3d__0__1__0;
+  end else if s='NEISO' then begin
+    ox:=cV3d__1__0__0;
+    oy:=cV3d__0__1__0;
+    m:=uzegeometry.MatrixMultiply(CreateRotationMatrixX(pi/2+pi/6),CreateRotationMatrixZ(-pi/4));
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='SEISO' then begin
+    ox:=cV3d__1__0__0;
+    oy:=cV3d__0__1__0;
+
+    m:=uzegeometry.MatrixMultiply(CreateRotationMatrixX(pi/2+pi/6),
+      CreateRotationMatrixZ(pi+pi/4));
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='NWISO' then begin
+    ox:=cV3d__1__0__0;
+    oy:=cV3d__0__1__0;
+
+    m:=uzegeometry.MatrixMultiply(CreateRotationMatrixX(pi/2+pi/6),
+      CreateRotationMatrixZ({pi+}pi/4));
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='SWISO' then begin
+    ox:=cV3d__1__0__0;
+    oy:=cV3d__0__1__0;
+
+    m:=uzegeometry.MatrixMultiply(CreateRotationMatrixX(pi/2+pi/6),
+      CreateRotationMatrixZ(pi-pi/4));
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='RL' then begin
+    m:=CreateAffineRotationMatrix(drawings.GetCurrentDWG.GetPCamera^.prop.look,-45*pi/180);
+    ox:=drawings.GetCurrentDWG.GetPCamera^.prop.xdir;
+    oy:=drawings.GetCurrentDWG.GetPCamera^.prop.ydir;
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='RR' then begin
+    m:=CreateAffineRotationMatrix(
+      drawings.GetCurrentDWG.GetPCamera^.prop.look,45*pi/180);
+    ox:=drawings.GetCurrentDWG.GetPCamera^.prop.xdir;
+    oy:=drawings.GetCurrentDWG.GetPCamera^.prop.ydir;
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='RU' then begin
+    m:=CreateAffineRotationMatrix(drawings.GetCurrentDWG.GetPCamera^.prop.xdir,-45*pi/180);
+    ox:=drawings.GetCurrentDWG.GetPCamera^.prop.xdir;
+    oy:=drawings.GetCurrentDWG.GetPCamera^.prop.ydir;
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else if s='RD' then begin
+    m:=CreateAffineRotationMatrix(
+      drawings.GetCurrentDWG.GetPCamera^.prop.xdir,45*pi/180);
+    ox:=drawings.GetCurrentDWG.GetPCamera^.prop.xdir;
+    oy:=drawings.GetCurrentDWG.GetPCamera^.prop.ydir;
+    ox:=VectorTransform3D(ox,m);
+    oy:=VectorTransform3D(oy,m);
+  end else
+    recognized:=False;
+  if recognized then begin
+    oz:=uzegeometry.VectorDot(ox,oy);
+    drawings.GetCurrentDWG.wa.RotTo(ox,oy,oz);
+  end;
+  Result:=cmd_ok;
+end;
+
+initialization
+  programlog.LogOutFormatStr(clUInit,[{$INCLUDE %FILE%}],LM_Info,UnitsInitializeLMId);
+  CreateZCADCommand(@view_com,'View',CADWG,0).overlay:=True;
+
+finalization
+  ProgramLog.LogOutFormatStr(clUFin,[{$INCLUDE %FILE%}],LM_Info,UnitsFinalizeLMId);
+end.

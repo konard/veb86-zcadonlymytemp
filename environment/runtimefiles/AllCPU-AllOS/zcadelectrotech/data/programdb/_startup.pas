@@ -1,0 +1,49 @@
+subunit devicebase;
+uses system;
+interface
+var
+   _cables:String;
+   _cables_sv:String;
+   _detsmokesl:String;
+   _dethandsl:String;
+   _ppkop:String;
+   _puop:String;
+   _ibpops:String;
+   _am:String;
+   _thermosensor:String;
+   _thermoswitches:String;
+   _thermoresistance:String;
+   _pressureswitches:String;
+   _pressuremanometer:String;
+   _thermometer:String;
+   _pressuresensor:String;
+   _levelswitches:String;
+   _seismicswitches:String;
+   _gasdetector:String;
+   _gasswitches:String;
+   _flowswitches:String;
+implementation
+begin
+     _seismicswitches:='Датчикисейсмо_реле_';
+     _levelswitches:='Датчикиуровня_реле_';
+     _thermoswitches:='Датчикитемпературы_реле_';
+     _thermosensor:='Датчикитемпературы_преобразователи_';
+     _thermoresistance:='Датчикитемпературы_термосопротивления_';
+     _thermometer:='Датчикитемпературы_термометры_';
+     _pressureswitches:='Датчикидавления_реледавления_';
+     _pressuremanometer:='Датчикидавления_манометры_';
+     _pressuresensor:='Датчикидавления_преобразователи_';
+     _gasdetector:='Датчикизагазованности_преобразователи_';
+     _gasswitches:='Датчикизагазованности_реле_';
+     _flowswitches:='Датчикипотока_реле_';
+     _cables:='Кабели_';
+     _cables_sv:='Кабели_связь';
+     _detsmokesl:='Извещатели_пожарные_дымовые_шлейфовые_';
+     _dethandsl:='Извещатели_пожарные_ручные_шлейфовые_';
+     _detoscontact:='Извещатели_охранные_магнитоконтактные_шлейфовые_';
+     _ppkop:='Приборы_ОПС_';
+     _puop:='Приборы_ОПС_ПУ_оповещение';
+     _ibpops:='Приборы_ОПС_ibp';
+     _am:='Приборы_ОПС_СОУЭ_оповещатели_речевые';
+     _materials:='Материалы_';
+end.

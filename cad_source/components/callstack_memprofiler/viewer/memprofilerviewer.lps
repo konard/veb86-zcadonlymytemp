@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="memprofilerviewer.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="28" Y="20"/>
+        <UsageCount Value="211"/>
+      </Unit>
+      <Unit>
+        <Filename Value="umainform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="294"/>
+        <CursorPos Y="312"/>
+        <UsageCount Value="211"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\fpclaztrunk\lazarus\components\virtualtreeview\laz.virtualtrees.pas"/>
+        <UnitName Value="laz.VirtualTrees"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="32789"/>
+        <CursorPos X="3" Y="32442"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\source\nodetree.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="12"/>
+        <UsageCount Value="164"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="16">
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="251" Column="43"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="174" Column="51" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="172" Column="41" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="174" Column="21" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="174" Column="36" TopLine="165"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="223" Column="26" TopLine="205"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="346" Column="54" TopLine="318"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="261" Column="64" TopLine="241"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="337" Column="53" TopLine="3"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="15" Column="53"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="17" Column="116"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="15" Column="119"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="174" Column="18" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="223" Column="10" TopLine="205"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="18" Column="20"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="14"/>
+      </Position>
+      <Position>
+        <Filename Value="umainform.pas"/>
+        <Caret Line="154" Column="35" TopLine="136"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

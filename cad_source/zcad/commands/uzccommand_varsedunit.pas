@@ -1,0 +1,66 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>)
+}
+{$mode delphi}
+unit uzccommand_VarsEdUnit;
+
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  uzcLog,
+  Controls,
+  SysUtils,
+  uzbpaths,
+  Varman,
+  uzccmdinfoform,
+  uzccommandsabstract,uzccommandsimpl,
+  uzctnrVectorBytesStream,
+  uzcinterface,
+  uzcstrconsts,
+  UUnitManager,
+  uzccmdeditunit,
+  uzctranslations;
+
+implementation
+
+function VarsEdUnit_com(const Context:TZCADCommandContext;
+  operands:TCommandOperands):TCommandResult;
+var
+  u:PTSimpleUnit;
+  op:ansistring;
+begin
+  if length(Operands)>0 then begin
+    op:=Operands;
+    u:=units.findunit(GetSupportPaths,InterfaceTranslate,op);
+    if u<>nil then
+      EditUnit(u^)
+    else
+      zcUI.TextMessage(format(rsUnableToFindUnit,[op]),TMWOHistoryOut);
+  end else
+    zcUI.TextMessage(rscmCmdMustHaveOperand,TMWOHistoryOut);
+  Result:=cmd_ok;
+end;
+
+initialization
+  programlog.LogOutFormatStr(clUInit,[{$INCLUDE %FILE%}],LM_Info,UnitsInitializeLMId);
+  CreateZCADCommand(@VarsEdUnit_com,'VarsEdUnit',0,0);
+
+finalization
+  ProgramLog.LogOutFormatStr(clUFin,[{$INCLUDE %FILE%}],LM_Info,UnitsFinalizeLMId);
+end.

@@ -1,0 +1,6 @@
+;Комментарий
+;*-путь к программе
+LoadActions($(RoCfgs)/menu/actionscontent.xml)
+LoadToolBars($(RoCfgs)/menu/toolbarscontent.xml)
+LoadPalettes($(RoCfgs)/menu/palettescontent.xml)
+LoadMenus($(RoCfgs)/menu/menuscontent.xml)

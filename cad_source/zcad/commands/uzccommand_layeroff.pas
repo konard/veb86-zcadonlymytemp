@@ -1,0 +1,74 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>)
+}
+{$mode delphi}
+unit uzccommand_LayerOff;
+
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  uzcLog,SysUtils,
+  uzccommandsabstract,uzeentity,uzcdrawing,uzcdrawings,uzccommandsmanager,
+  uzcstrconsts,uzcutils,zUndoCmdChgBaseTypes,zUndoCmdChgTypes,uzccommandsimpl,
+  uzestyleslayers,uzcinterface;
+
+implementation
+
+const
+  LayerOnCommandName='LayerOff';
+
+function LayerOff_com(const Context:TZCADCommandContext;
+  operands:TCommandOperands):TCommandResult;
+var
+  UndoStartMarkerPlaced:boolean;
+  plp:PGDBLayerProp;
+begin
+  UndoStartMarkerPlaced:=False;
+  plp:=drawings.GetCurrentDWG^.LayerTable.getAddres(operands);
+  if plp<>nil then begin
+    if not plp^._on then begin
+      zcUI.TextMessage(format(rsLayerAlreadyOff,[operands]),TMWOHistoryOut);
+      Result:=cmd_error;
+    end else begin
+      zcPlaceUndoStartMarkerIfNeed(UndoStartMarkerPlaced,LayerOnCommandName,True);
+      with TBooleanChangeCommand.CreateAndPushIfNeed(
+          PTZCADDrawing(drawings.GetCurrentDWG)^.UndoStack,
+          TChangedBoolean.CreateRec(plp^._on),
+          TSharedEmpty(Default(TEmpty)),
+          TAfterChangeEmpty(Default(TEmpty))) do
+      begin
+        plp^._on:=not plp^._on;
+        //ComitFromObj;
+      end;
+      zcPlaceUndoEndMarkerIfNeed(UndoStartMarkerPlaced);
+      Result:=cmd_ok;
+    end;
+  end else begin
+    zcUI.TextMessage(format(rsLayerNotFound,[operands]),TMWOShowError);
+    Result:=cmd_error;
+  end;
+end;
+
+initialization
+  programlog.LogOutFormatStr(clUInit,[{$INCLUDE %FILE%}],LM_Info,UnitsInitializeLMId);
+  CreateZCADCommand(@LayerOff_com,LayerOnCommandName,CADWG,0);
+
+finalization
+  ProgramLog.LogOutFormatStr(clUFin,[{$INCLUDE %FILE%}],LM_Info,UnitsFinalizeLMId);
+end.

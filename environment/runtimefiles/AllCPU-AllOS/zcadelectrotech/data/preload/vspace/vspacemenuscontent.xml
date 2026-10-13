@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <MenusContent>
+    <Menu Name="Engineering">
+  	  <SubMenu Name="Space">
+	    <SubMenu Name="spaceBuild">
+			<Action Name="ACN_vspaceBuild"/>
+			<Action Name="ACN_vspacePolyBuild"/>
+        </SubMenu>
+	    <SubMenu Name="spaceSection">
+			<Action Name="ACN_vspaceSection"/>
+			<Action Name="ACN_vspacePolySection"/>
+        </SubMenu>
+	    <SubMenu Name="spaceFloor">
+			<Action Name="ACN_vspaceFloor"/>
+			<Action Name="ACN_vspacePolyFloor"/>
+        </SubMenu>
+	    <SubMenu Name="spaceRoom">
+			<Action Name="ACN_vspaceRoom"/>
+			<Action Name="ACN_vspacePolyRoom"/>
+        </SubMenu>			
+		<Separator/>
+		<Action Name="ACN_vspaceBuildonoff"/>				
+		<Action Name="ACN_vspaceSectiononoff"/>
+		<Action Name="ACN_vspaceFlooronoff"/>	
+		<Action Name="ACN_vspaceRoomonoff"/>		
+		<Separator/>
+		<Action Name="ACN_vtablerecognition"/>
+		<Separator/>
+		<Action Name="ACN_vtableeditor"/>
+      </SubMenu>
+    </Menu>
+  </MenusContent>
+</CONFIG>

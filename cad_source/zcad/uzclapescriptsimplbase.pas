@@ -1,0 +1,168 @@
+{
+*****************************************************************************
+*                                                                           *
+*  This file is part of the ZCAD                                            *
+*                                                                           *
+*  See the file COPYING.txt, included in this distribution,                 *
+*  for details about the copyright.                                         *
+*                                                                           *
+*  This program is distributed in the hope that it will be useful,          *
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                     *
+*                                                                           *
+*****************************************************************************
+}
+{
+@author(Andrey Zubarev <zamtmn@yandex.ru>) 
+}
+unit uzcLapeScriptsImplBase;
+{$Codepage UTF8}
+{$INCLUDE zengineconfig.inc}
+
+interface
+
+uses
+  SysUtils,
+  lptypes,lpvartypes,lpparser,lpcompiler,lpeval,
+  LazUTF8,
+  uzcLog,
+  uzeentity,uzeExtdrAbstractEntityExtender,
+  uzeentline,uzeentityfactory,
+  uzelongprocesssupport,uzccommandsabstract,
+  gzctnrSTL;
+
+type
+  TLapeScriptContextMode=(LSCMCompilerSetup,LSCMContextSetup);
+  TLapeScriptContextModes=set of TLapeScriptContextMode;
+
+const
+  DoAll=[LSCMCompilerSetup,LSCMContextSetup];
+  DoCtx=[LSCMContextSetup];
+
+type
+  TThings=TMyVector<TObject>;
+  TThingsIndex=record
+    Things:TThings;
+    Index:Integer;
+  end;
+  PThingsIndex=^TThingsIndex;
+  TBaseScriptContext=class
+  private
+    fLPS:TZELongProcessSupport;
+    fThings:TThings;
+    function getLPS:TZELongProcessSupport;
+    function getThings:TThings;
+  public
+    constructor CreateContext;virtual;
+    destructor Destroy;override;
+
+    procedure CleanUp;virtual;
+
+    property LongProcessSupport:TZELongProcessSupport read getLPS;
+    property Things:TThings read getThings;
+  end;
+  TMetaScriptContext=class of TBaseScriptContext;
+
+  TScriptContextCreateMode=(
+    LSCMCreateOnce{создается один раз, используется всеми скриптами},
+    LSCMRecreate{создается заново, для каждого запуска каждого скрипта});
+
+
+  TCompilerDefAdder=procedure(const ACommandContext:TZCADCommandContext;mode:TLapeScriptContextModes;ctx:TBaseScriptContext;cplr:TLapeCompiler) of object;
+  TCompilerDefAdders=array of TCompilerDefAdder;
+
+  TLapeBase=class
+    class procedure zcBase2cplr(const ACommandContext:TZCADCommandContext;mode:TLapeScriptContextModes;ctx:TBaseScriptContext;cplr:TLapeCompiler);
+  end;
+
+implementation
+
+function TBaseScriptContext.getLPS:TZELongProcessSupport;
+begin
+  if fLPS=nil then begin
+    fLPS:=lps.Clone;
+  end;
+  result:=fLPS;
+end;
+function TBaseScriptContext.getThings:TThings;
+begin
+  if fThings=nil then begin
+    fThings:=TThings.Create;
+  end;
+  result:=fThings;
+end;
+constructor TBaseScriptContext.CreateContext;
+begin
+  fLPS:=nil;
+  inherited;
+end;
+
+destructor TBaseScriptContext.Destroy;
+begin
+  CleanUp;
+  fThings.Free;
+  inherited;
+end;
+
+procedure TBaseScriptContext.CleanUp;
+var
+  inst:TObject;
+begin
+  if fThings<>nil then begin
+    for inst in fThings do
+      inst.free;
+    fThings.Clear;
+  end;
+  FreeAndNil(fLPS);
+end;
+
+procedure slp(const Params: PParamArray; const Result: Pointer); cdecl;
+type
+  PLPSHandle=^TLPSHandle;
+  PLPSCounter=^TLPSCounter;
+var
+  ctx:TBaseScriptContext;
+begin
+  ctx:=TBaseScriptContext(Params^[0]);
+  PLPSHandle(Result)^:=ctx.LongProcessSupport.StartLongProcess(PString(Params^[1])^,{Result}nil,PLPSCounter(Params^[2])^);
+end;
+
+procedure plp(const Params: PParamArray); cdecl;
+type
+  PLPSHandle=^TLPSHandle;
+  PLPSCounter=^TLPSCounter;
+var
+  ctx:TBaseScriptContext;
+begin
+  ctx:=TBaseScriptContext(Params^[0]);
+  ctx.LongProcessSupport.ProgressLongProcess(PLPSHandle(Params^[1])^,PLPSCounter(Params^[2])^);
+end;
+
+procedure elp(const Params: PParamArray); cdecl;
+type
+  PLPSHandle=^TLPSHandle;
+var
+  ctx:TBaseScriptContext;
+begin
+  ctx:=TBaseScriptContext(Params^[0]);
+  ctx.LongProcessSupport.EndLongProcess(PLPSHandle(Params^[1])^);
+end;
+
+class procedure TLapeBase.zcBase2cplr(const ACommandContext:TZCADCommandContext;mode:TLapeScriptContextModes;ctx:TBaseScriptContext;cplr:TLapeCompiler);
+begin
+  if LSCMCompilerSetup in mode then begin
+    cplr.StartImporting;
+    cplr.addBaseDefine('LAPE');
+
+    cplr.addGlobalType('int32','TLPSHandle');
+    cplr.addGlobalMethod('function StartLongProcess(LPName:string;Total:int32=0):TLPSHandle;',@slp,ctx);
+    cplr.addGlobalMethod('procedure ProgressLongProcess(LPHandle:TLPSHandle;Current:int32);',@plp,ctx);
+    cplr.addGlobalMethod('procedure EndLongProcess(LPHandle:TLPSHandle);',@elp,ctx);
+
+    cplr.EndImporting;
+  end;
+end;
+
+initialization
+finalization
+end.

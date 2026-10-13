@@ -1,0 +1,187 @@
+# AppVeyor build configuration
+# https://www.appveyor.com/docs/build-configuration
+# https://www.appveyor.com/docs/appveyor-yml/
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+# CI build version format
+version: 0.9.8.6.{build}-{branch}
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image: Visual Studio 2019
+# Enable Windows RDP Client Access to Build Worker
+init:
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+# add several platforms to build matrix:
+platform:
+  - x64
+
+# Scripts that run after cloning repository
+install:
+  - cmd: git submodule update --init --recursive
+  - cmd: echo %PATH%
+  - cmd: echo Download lazarus-4.8-fpc-3.2.2-win64.exe
+  - cmd: curl -fsSL -o lazarus-4.8-fpc-3.2.2-win64.exe "https://fossies.org/windows/misc/lazarus-4.8-fpc-3.2.2-win64.exe"
+  - cmd: echo Installing lazarus-4.8-fpc-3.2.2-win64.exe
+  - cmd: lazarus-4.8-fpc-3.2.2-win64.exe /verysilent /supressmsgboxes
+  - cmd: rmdir /S /Q c:\lazarus\docs
+  - cmd: rmdir /S /Q c:\lazarus\examples
+  - cmd: echo Fix https://gitlab.com/freepascal.org/lazarus/lazarus/-/issues/39630
+  - ps: (Get-Content -Path 'C:\lazarus\environmentoptions.xml') -replace '\$Lazarusdir\\','$(Lazarusdir)' | Set-Content -Path 'C:\lazarus\environmentoptions.xml'
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe checkallvars
+  - cmd: echo Installing Asciidoctor
+  - cmd: gem install asciidoctor
+  - cmd: gem install asciidoctor-pdf
+  - cmd: gem install asciidoctor-diagram
+  - cmd: gem install asciidoctor-multipage
+
+# Build scripts
+build_script:
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe installpkgstolaz
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe cleanzcad ZPLATFORM=x86_64-win64
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe documentation
+  - cmd: 7z a ZCAD-%APPVEYOR_REPO_COMMIT%.zip "cad"
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe cleanzcadelectrotech ZPLATFORM=x86_64-win64
+#  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe afterzcadelectrotechbuild LAZBUILD=C:/lazarus/lazbuild.exe PCP=C:/Users/appveyor/AppData/Local/lazarus LP=C:/lazarus ZP=C:/projects/zcad/cad/bin ZPLATFORM=x86_64-win64
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe afterzcadelectrotechbuild LAZBUILD=C:/lazarus/lazbuild.exe PCP=C:/Users/appveyor/AppData/Local/lazarus LP=C:/lazarus ZP=C:/projects/zcad/cad/bin
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe documentation
+  - cmd: C:\lazarus\fpc\3.2.2\bin\x86_64-win64\make.exe tests
+
+# scripts to run after build
+after_build:
+  # zip the build archive
+  #- tree /F "cad"
+  - 7z a ZCADElectrotech-%APPVEYOR_REPO_COMMIT%.zip "cad"
+
+#---------------------------------#
+#       tests configuration       #
+#---------------------------------#
+
+# to disable automatic tests
+# test: off
+
+test_script:
+  - cmd: echo Run tests
+  - cmd: utils\tests\runfpcunittest cad_source\components\zcontainers\tests\testzcontainers testzcontainers.xml
+  - cmd: utils\tests\runfpcunittest cad_source\zengine\tests\testzengine testzengine.xml
+  - cmd: echo Convert tests results
+# convert result from fpcunit to junit
+  - ps: $XSLInputElement = New-Object System.Xml.Xsl.XslCompiledTransform;$XSLInputElement.Load("https://raw.githubusercontent.com/zamtmn/zcad/master/utils/tests/fpctest2junit.xsl");$XSLInputElement.Transform((Resolve-Path .\testzcontainers.xml),((Join-Path (Resolve-Path .) "junittestzcontainers.xml")))
+  - ps: $XSLInputElement = New-Object System.Xml.Xsl.XslCompiledTransform;$XSLInputElement.Load("https://raw.githubusercontent.com/zamtmn/zcad/master/utils/tests/fpctest2junit.xsl");$XSLInputElement.Transform((Resolve-Path .\testzengine.xml),((Join-Path (Resolve-Path .) "junittestzengine.xml")))
+
+# upload results to AppVeyor
+  - ps: $wc = New-Object 'System.Net.WebClient';$wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junittestzcontainers.xml))
+  - ps: $wc = New-Object 'System.Net.WebClient';$wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junittestzengine.xml))
+
+#---------------------------------#
+#      artifacts configuration    #
+#---------------------------------#
+
+#specify artifacts to upload
+artifacts:
+  - path: ZCAD-%APPVEYOR_REPO_COMMIT%.zip
+    name: ZCAD-%APPVEYOR_REPO_COMMIT%
+  - path: ZCADElectrotech-%APPVEYOR_REPO_COMMIT%.zip
+    name: ZCADElectrotech-%APPVEYOR_REPO_COMMIT%
+  - path: cad\data\help\userguide.ru.pdf
+    name: userguide.ru.pdf
+
+#---------------------------------#
+#     deployment configuration    #
+#---------------------------------#
+
+# to disable deployment
+deploy: off
+
+#---------------------------------#
+#        global handlers          #
+#---------------------------------#
+
+# on successful build
+on_success:
+  - ECHO "BUILD SUCCESSFUL"
+
+# on build failure
+on_failure:
+  - ECHO "BUILD FAILURE(("
+
+# after build failure or success
+on_finish:
+# Debug with blocked RDP Access
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+# https://www.appveyor.com/docs/environment-variables/
+# Environment variables that are set by AppVeyor for every build:
+# APPVEYOR - True if build runs in AppVeyor environment;
+  - ECHO "%APPVEYOR%"
+# CI - True if build runs in AppVeyor environment;
+  - ECHO "%CI%"
+# APPVEYOR_API_URL - AppVeyor Build Agent API URL;
+  - ECHO "%APPVEYOR_API_URL%"
+# APPVEYOR_ACCOUNT_NAME - account name;
+  - ECHO "%APPVEYOR_ACCOUNT_NAME%"
+# APPVEYOR_PROJECT_ID - AppVeyor unique project ID;
+  - ECHO "%APPVEYOR_PROJECT_ID%"
+# APPVEYOR_PROJECT_NAME - project name;
+  - ECHO "%APPVEYOR_PROJECT_NAME%"
+# APPVEYOR_PROJECT_SLUG - project slug (as seen in project details URL);
+  - ECHO "%APPVEYOR_PROJECT_SLUG%"
+# APPVEYOR_BUILD_FOLDER - path to clone directory;
+  - ECHO "%APPVEYOR_BUILD_FOLDER%"
+# APPVEYOR_BUILD_ID - AppVeyor unique build ID;
+  - ECHO "%APPVEYOR_BUILD_ID%"
+# APPVEYOR_BUILD_NUMBER - build number;
+  - ECHO "%APPVEYOR_BUILD_NUMBER%"
+# APPVEYOR_BUILD_VERSION - build version;
+  - ECHO "%APPVEYOR_BUILD_VERSION%"
+# APPVEYOR_PULL_REQUEST_NUMBER - GitHub Pull Request number;
+  - ECHO "%APPVEYOR_PULL_REQUEST_NUMBER%"
+# APPVEYOR_PULL_REQUEST_TITLE - GitHub Pull Request title
+  - ECHO "%APPVEYOR_PULL_REQUEST_TITLE%"
+# APPVEYOR_JOB_ID - AppVeyor unique job ID;
+  - ECHO "%APPVEYOR_JOB_ID%"
+# APPVEYOR_JOB_NAME - job name;
+  - ECHO "%APPVEYOR_JOB_NAME%"
+# APPVEYOR_REPO_PROVIDER - github, bitbucket, kiln, vso or gitlab;
+  - ECHO "%APPVEYOR_REPO_PROVIDER%"
+# APPVEYOR_REPO_SCM - git or mercurial;
+  - ECHO "%APPVEYOR_REPO_SCM%"
+# APPVEYOR_REPO_NAME - repository name in format owner-name/repo-name;
+  - ECHO "%APPVEYOR_REPO_NAME%"
+# APPVEYOR_REPO_BRANCH - build branch. For Pull Request commits it is base branch PR is merging into;
+  - ECHO "%APPVEYOR_REPO_BRANCH%"
+# APPVEYOR_REPO_TAG - true if build has started by pushed tag; otherwise false;
+  - ECHO "%APPVEYOR_REPO_TAG%"
+# APPVEYOR_REPO_TAG_NAME - contains tag name for builds started by tag; otherwise this variable is undefined;
+  - ECHO "%APPVEYOR_REPO_TAG_NAME%"
+# APPVEYOR_REPO_COMMIT - commit ID (SHA);
+  - ECHO "%APPVEYOR_REPO_COMMIT%"
+# APPVEYOR_REPO_COMMIT_AUTHOR - commit author’s name;
+  - ECHO "%APPVEYOR_REPO_COMMIT_AUTHOR%"
+# APPVEYOR_REPO_COMMIT_AUTHOR_EMAIL - commit author’s email address;
+  - ECHO "%APPVEYOR_REPO_COMMIT_AUTHOR_EMAIL%"
+# APPVEYOR_REPO_COMMIT_TIMESTAMP - commit date/time;
+  - ECHO "%APPVEYOR_REPO_COMMIT_TIMESTAMP%"
+# APPVEYOR_REPO_COMMIT_MESSAGE - commit message;
+  - ECHO "%APPVEYOR_REPO_COMMIT_MESSAGE%"
+# APPVEYOR_REPO_COMMIT_MESSAGE_EXTENDED - the rest of commit message after line break (if exists);
+  - ECHO "%APPVEYOR_REPO_COMMIT_MESSAGE_EXTENDED%"
+# APPVEYOR_SCHEDULED_BUILD - True if the build runs by scheduler;
+  - ECHO "%APPVEYOR_SCHEDULED_BUILD%"
+# APPVEYOR_FORCED_BUILD (True or undefined) - builds started by “New build” button or from the same API;
+  - ECHO "%APPVEYOR_FORCED_BUILD%"
+# APPVEYOR_RE_BUILD (True or undefined) - build started by “Re-build commit/PR” button of from the same API;
+  - ECHO "%APPVEYOR_RE_BUILD%"
+# PLATFORM - platform name set on Build tab of project settings (or through platform parameter in appveyor.yml);
+  - ECHO "%PLATFORM%"
+# CONFIGURATION - configuration name set on Build tab of project settings (or through configuration parameter in appveyor.yml);
+  - ECHO "%CONFIGURATION%"

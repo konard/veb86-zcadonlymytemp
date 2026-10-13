@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="4.99"/>
+  <Compiler Value="C:\fpclaz\pp\bin\x86_64-win64\fpc.exe" Date="1550621805"/>
+  <Params Value="-MObjFPC -Scghi -O1 -g -gl -l -vewnhibq -FiC:\zcad\zcad\cad_source\other\agraphlaz\Vectors -FuC:\zcad\zcad\cad_source\other\agraphlaz\lazarus\ -FuC:\zcad\zcad\cad_source\other\agraphlaz\Graphs -FuC:\fpclaz\lazarus\packager\units\x86_64-win64 -FuC:\fpclaz\lazarus\components\lazutils\lib\x86_64-win64 -FuC:\fpclaz\lazarus\components\freetype\lib\x86_64-win64 -FuC:\fpclaz\lazarus\lcl\units\x86_64-win64 -FuC:\zcad\zcad\cad_source\other\agraphlaz\lazarus\lib\x86_64-win64 -FUC:\zcad\zcad\cad_source\other\agraphlaz\lazarus\lib\x86_64-win64\ ag_graph.pas"/>
+</CONFIG>

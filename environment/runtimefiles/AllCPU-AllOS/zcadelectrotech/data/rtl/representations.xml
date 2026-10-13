@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <STRINGTREE>
+    <GraphSymbol Desc="Symbols">
+      <onPlan Desc="On plan"/>
+      <onScheme Desc="On scheme">
+        <Automation Desc="On automation scheme"/>
+        <Connection Desc="On connection scheme"/>
+        <Wiring Desc="On wiring scheme"/>
+        <Electrical_circuit Desc="On electrical circuit scheme"/>
+      </onScheme>
+    </GraphSymbol>
+    <Not_classified Desc="Not classified"/>
+  </STRINGTREE>
+</CONFIG>

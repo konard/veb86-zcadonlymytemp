@@ -303,6 +303,7 @@ uses
   //uzccommand_adddxftablestyle,
   uzccommand_tablestyles,
   uzccommand_tablestylemanager,
+  uzccommand_mleaderstyles,
 
   uzvlightexporter_commandexport,
   uzvdialuxlumimporter_main,

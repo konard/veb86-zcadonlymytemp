@@ -177,7 +177,7 @@ var
 begin
   VarsDict.Add('$CLAYER',drawing.GetCurrentLayer^.Name);
   VarsDict.Add('$CELTYPE',drawing.GetCurrentLType^.Name);
-  VarsDict.Add('$DWGCODEPAGE',ZCCP2Str(drawing.DXFCodePage));
+  VarsDict.Add('$DWGCODEPAGE',ZCCP2Str(ZCCodePageOrDefault(drawing.DXFCodePage)));
 
   pcurrtextstyle:=drawing.GetCurrentTextStyle;
   if pcurrtextstyle<>nil then
@@ -340,9 +340,12 @@ begin
   IODXFContext.Header.Version:=ZCDxfVer2DXF_ACVer(AVer);
   IODXFContext.Header.iVersion:=ZCDxfVer2ACVer(AVer);
 
+  { Если кодовая страница чертежа не задана, берём SysDWG_CodePage - так же,
+    как для $DWGCODEPAGE в MakeVariablesDict, иначе заголовок и
+    перекодировка строк DXF2000 расходятся }
   //if AVer<ZCDxf2007 then begin
-    IODXFContext.Header.DWGCodePage:=ZCCodePage2ACDWGCodePage(drawing.DXFCodePage){SysCP2ACCP(ACodePage)};
-    IODXFContext.Header.iDWGCodePage:=ZCCodePage2SysCP(drawing.DXFCodePage);//ACodePage;
+    IODXFContext.Header.DWGCodePage:=ZCCodePage2ACDWGCodePage(ZCCodePageOrDefault(drawing.DXFCodePage)){SysCP2ACCP(ACodePage)};
+    IODXFContext.Header.iDWGCodePage:=ZCCodePage2SysCP(ZCCodePageOrDefault(drawing.DXFCodePage));//ACodePage;
   //end else begin
   //  IODXFContext.Header.DWGCodePage:=ZCCodePage2ACDWGCodePage(drawing.DXFCodePage){SysCP2ACCP(ACodePage)};
   //  IODXFContext.Header.iDWGCodePage:=ZCCodePage2SysCP(drawing.DXFCodePage);//ACodePage;
@@ -369,6 +372,15 @@ begin
     inlttypetable:=False;
     indimstyletable:=False;
     inappidtable:=False;
+    { Состояние разбора секций CLASSES/OBJECTS шаблона: без явной
+      инициализации локальные переменные содержат мусор }
+    inobjectssec:=False;
+    inclassessec:=False;
+    innodobj:=False;
+    pendingpair:=False;
+    pendinggroups:='';
+    pendingvalues:='';
+    acadTableOwnerDone:=False;
     MakeVariablesDict(IODXFContext.VarsDict,drawing);
     processedvarscount:=IODXFContext.VarsDict.Count;
     while pendingpair or templatefile.notEOF do begin
@@ -435,19 +447,32 @@ begin
                and (TDWGHandle(valuei)=NODSave.TemplateNODHandle) then
               innodobj:=True;
           end;
-        end else if (groupi=2) and (values='ENTITIES') then begin
+        end else if (groupi=2) and (values='CLASSES') then begin
           outstream.TXTAddStringEOL(groups);
           outstream.TXTAddStringEOL(values);
+          inclassessec:=True;
         end else if inclassessec and (groupi=1) then begin
           { Имя класса шаблона — для ClassesProc NOD-обработчиков }
           IODXFContext.TemplateClassNames.Add(Trim(values));
           outstream.TXTAddStringEOL(groups);
-          outstream.TXTAddStringEOL(values);		  
+          outstream.TXTAddStringEOL(values);
+        end else if inclassessec and (groupi=0)
+                    and (values=dxfName_ENDSEC) then begin
+          { Классы объектов веток NOD (TABLESTYLE, CELLSTYLEMAP,
+            MLEADERSTYLE, сохранённые ветки этапа 7) и прикладных модулей
+            объявляются до закрывающего ENDSEC секции CLASSES }
+          RunClassesSaveDxfProcs;
+          inclassessec:=False;
+          outstream.TXTAddStringEOL(groups);
+          outstream.TXTAddStringEOL(values);
+        end else if (groupi=2) and (values='ENTITIES') then begin
+          outstream.TXTAddStringEOL(groups);
+          outstream.TXTAddStringEOL(values);
           { Перед записью сущностей вычисляем хэндл владельца и выделяем
             хэндлы веток NOD (стилей таблиц) — сырые ACAD_TABLE ссылаются
             на них (issue #1339, этапы 3–4 ТЗ NOD). }
           PreallocateAcadTableOwnerHandle;
-          ReserveNODHandles; 
+          ReserveNODHandles;
           saveentitiesdxf2000(@{p}drawing.pObjRoot^.ObjArray,outstream,drawing,IODXFContext);
         end else if (groupi=2) and (values='BLOCKS') then begin
           outstream.TXTAddStringEOL(groups);
@@ -669,6 +694,13 @@ begin
               outstream.TXTAddStringEOL(dxfName_BLOCK_RECORD);
 
               IODXFContext.p2h.MyGetOrCreateValue(@(PBlockdefArray(drawing.BlockDefArray.parray)^[i]),IODXFContext.handle,temphandle);
+              { Запоминаем «имя блока -> новый хэндл BLOCK_RECORD» для
+                ссылок 341/343 MLEADERSTYLE (этап 6 ТЗ NOD) }
+              if not IODXFContext.BlockNameHandleMap.MyContans(
+                   PBlockdefArray(drawing.BlockDefArray.parray)^[i].Name) then
+                IODXFContext.BlockNameHandleMap.Add(
+                  PBlockdefArray(drawing.BlockDefArray.parray)^[i].Name,
+                  inttohex(temphandle,0));
               outstream.TXTAddStringEOL(dxfGroupCode(5));
               outstream.TXTAddStringEOL(inttohex(temphandle,0));
               outstream.TXTAddStringEOL(dxfGroupCode(100));
@@ -1127,6 +1159,13 @@ begin
 
                   p:=pcurrtextstyle;
                   IODXFContext.p2h.MyGetOrCreateValue(p,IODXFContext.handle,temphandle);
+                  { Запоминаем «имя текстового стиля -> новый хэндл STYLE»
+                    для ссылок 342 MLEADERSTYLE и стилей таблиц (этапы 5-6
+                    ТЗ NOD) }
+                  if not IODXFContext.TextStyleNameHandleMap.MyContans(
+                    pcurrtextstyle^.Name) then
+                    IODXFContext.TextStyleNameHandleMap.Add(
+                      pcurrtextstyle^.Name, inttohex(temphandle,0));
                   outstream.TXTAddStringEOL(inttohex(temphandle,0));
 
                   outstream.TXTAddStringEOL(dxfGroupCode(330));

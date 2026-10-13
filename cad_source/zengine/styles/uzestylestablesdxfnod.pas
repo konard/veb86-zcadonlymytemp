@@ -819,6 +819,7 @@ procedure WriteTableStyleObjectToStream(
   const StyleHandle: TDWGHandle;
   const OwnerHandle: TDWGHandle;
   TextStyleNameHandleMap: TString2StringDictionary;
+  const AHeader: TDXFHeaderInfo;
   const DictHandle: TDWGHandle = 0;
   const MapHandle: TDWGHandle = 0);
 var
@@ -865,7 +866,7 @@ begin
   outstream.TXTAddStringEOL(dxfGroupCode(100));
   outstream.TXTAddStringEOL('AcDbTableStyle');
   outstream.TXTAddStringEOL(dxfGroupCode(3));
-  outstream.TXTAddStringEOL(Style^.Name);
+  outstream.TXTAddStringEOL(dxfEnCodeString(Style^.Name, AHeader));
   outstream.TXTAddStringEOL(dxfGroupCode(70));
   outstream.TXTAddStringEOL(IntToStr(Style^.Flags70));
   outstream.TXTAddStringEOL(dxfGroupCode(71));
@@ -1004,13 +1005,13 @@ begin
   AOutStream.TXTAddStringEOL('1');
   for i:=0 to High(TSNODStyles) do begin
     AOutStream.TXTAddStringEOL(dxfGroupCode(3));
-    AOutStream.TXTAddStringEOL(TSNODStyles[i]^.Name);
+    AOutStream.TXTAddStringEOL(dxfEnCodeString(TSNODStyles[i]^.Name,AIODXFContext.Header));
     AOutStream.TXTAddStringEOL(dxfGroupCode(350));
     AOutStream.TXTAddStringEOL(inttohex(TSNODHandles[i],0));
   end;
   for i:=0 to High(TSNODStyles) do
     WriteTableStyleObjectToStream(AOutStream,TSNODStyles[i],TSNODHandles[i],
-      ADictHandle,AIODXFContext.TextStyleNameHandleMap,
+      ADictHandle,AIODXFContext.TextStyleNameHandleMap,AIODXFContext.Header,
       TSNODXDictHandles[i],TSNODMapHandles[i]);
   { Указатели на стили чертежа после записи не нужны }
   SetLength(TSNODStyles,0);
